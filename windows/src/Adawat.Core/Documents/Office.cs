@@ -57,6 +57,41 @@ public static class Office
         return doc;
     }
 
+    /// <summary>Word documents Word or LibreOffice can lay out themselves.</summary>
+    public static bool CanPrintWord(string ext) => ext is "docx" or "doc" or "odt" or "rtf" && (HasWord || LibreOffice != null);
+
+    /// <summary>A Word document exported as PDF by Word or LibreOffice, so its headers, footers, letterhead pictures,
+    /// fonts, sizes and page layout come out as they look in Word. The plain-text route through <see cref="Doc"/> keeps
+    /// only the paragraphs.</summary>
+    public static async Task WordToPdf(string path, string output)
+    {
+        if (HasWord)
+        {
+            await Sta(() =>
+            {
+                dynamic word = Activator.CreateInstance(Type.GetTypeFromProgID("Word.Application")!)!;
+                try
+                {
+                    word.Visible = false;
+                    word.DisplayAlerts = 0;
+                    dynamic document = word.Documents.Open(path, false, true);
+                    document.ExportAsFixedFormat(output, 17);
+                    document.Close(false);
+                }
+                finally { word.Quit(); Marshal.FinalReleaseComObject(word); }
+            });
+            return;
+        }
+        if (LibreOffice is { } soffice)
+        {
+            using var temp = Output.Temp();
+            await Convert(soffice, path, "pdf", temp.Path);
+            File.Move(Path.Combine(temp.Path, Path.GetFileNameWithoutExtension(path) + ".pdf"), output, true);
+            return;
+        }
+        throw new AdawatException(OperatingSystem.IsWindows() ? "Microsoft Word is needed for this file." : Missing);
+    }
+
     /// <summary>A presentation exported as PDF, through PowerPoint or LibreOffice.</summary>
     public static async Task SlidesToPdf(string path, string output)
     {
