@@ -36,6 +36,7 @@ public static class Snapshots
             {
                 "welcome0" or "welcome1" or "welcome2" or "welcome3" => WelcomeWindow.Make(name[^1] - '0'),
                 "settings" => SettingsWindow.Make(),
+                "update" => UpdateWindow.Make(new Core.Release(new(9, 9, 0), "Adawat 9.9.0\n\n- Arabic slides keep their line spacing in PDF.\n- أدوات يتحقق من التحديثات.", "Adawat-x86_64.AppImage", new("https://example.invalid"), "")),
                 _ => ToolWindows.Make(name, files),
             };
             if (window == null) { Console.Error.WriteLine($"No window {name}. Known: {string.Join(" ", ToolWindows.Names)}"); return 2; }

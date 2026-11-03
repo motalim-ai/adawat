@@ -51,6 +51,8 @@ public static class SettingsWindow
 
         Section("General");
         stack.Children.Add(UI.Check("Start Adawat when Windows starts", Startup.IsEnabled, Startup.Set).Pad(0, 4));
+        stack.Children.Add(UI.Check("Check for updates when Adawat starts", settings.CheckForUpdates, v => { settings.CheckForUpdates = v; Save(); }).Pad(0, 4));
+        stack.Children.Add(UI.Row("Updates", UI.Button("Check Now", UpdateWindow.CheckNow)));
         var restart = UI.Button("Restart Now", () =>
         {
             Process.Start(new ProcessStartInfo(Environment.ProcessPath!) { UseShellExecute = true });

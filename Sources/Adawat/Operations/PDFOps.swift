@@ -43,7 +43,7 @@ enum PDFOps {
                 let single = PDFDocument()
                 single.insert(page, at: 0)
                 let out = folder.appendingPathComponent(String(format: "%@ %03d.pdf", base, index + 1))
-                single.write(to: out)
+                guard single.write(to: out) else { throw AdawatError.message("Could not save page \(index + 1) of \(file.lastPathComponent)") }
             }
             outputs.append(folder)
         }
@@ -162,14 +162,15 @@ enum PDFOps {
             guard document.write(to: out, withOptions: [PDFDocumentWriteOption(rawValue: "QuartzFilter"): filter]) else {
                 throw AdawatError.message("Could not create the compressed PDF")
             }
-            before += ImageOps.fileSize(file)
-            after += ImageOps.fileSize(out)
+            let original = ImageOps.fileSize(file), compressed = ImageOps.fileSize(out)
+            before += original
             // A PDF of text and vectors can grow; keep the original size in that case.
-            if ImageOps.fileSize(out) >= ImageOps.fileSize(file) {
+            if compressed >= original {
                 try? FileManager.default.removeItem(at: out)
-                after += ImageOps.fileSize(file) - ImageOps.fileSize(out)
+                after += original
                 continue
             }
+            after += compressed
             outputs.append(out)
         }
         let saved = before > 0 ? 100 - Int((Double(after) / Double(before) * 100).rounded()) : 0

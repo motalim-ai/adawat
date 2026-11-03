@@ -13,7 +13,8 @@ object Inputs {
     fun stage(context: Context, uris: List<Uri>): List<File> {
         val folder = File(context.cacheDir, "in/${UUID.randomUUID()}").apply { mkdirs() }
         val used = mutableSetOf<String>()
-        return uris.mapNotNull { uri ->
+        // Without a storage permission a file:// link can only reach Adawat's own private files, so none are taken.
+        return uris.filter { it.scheme != ContentResolver.SCHEME_FILE }.mapNotNull { uri ->
             runCatching {
                 var name = sanitize(displayName(context, uri) ?: uri.lastPathSegment ?: "file")
                 if (!name.contains('.')) {
@@ -22,15 +23,13 @@ object Inputs {
                 }
                 name = unique(name, used)
                 val target = File(folder, name)
-                if (uri.scheme == ContentResolver.SCHEME_FILE) File(uri.path!!).copyTo(target, overwrite = true)
-                else context.contentResolver.openInputStream(uri)!!.use { input -> target.outputStream().use { input.copyTo(it) } }
+                context.contentResolver.openInputStream(uri)!!.use { input -> target.outputStream().use { input.copyTo(it) } }
                 target
             }.onFailure { android.util.Log.w("Adawat", "Could not stage $uri", it) }.getOrNull()
         }
     }
 
     private fun displayName(context: Context, uri: Uri): String? {
-        if (uri.scheme == ContentResolver.SCHEME_FILE) return uri.lastPathSegment
         return context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
             if (cursor.moveToFirst()) cursor.getString(0) else null
         }
@@ -51,7 +50,7 @@ object Inputs {
     /** Clears staged files from earlier runs that are no longer in use. */
     fun cleanUp(context: Context, olderThanMillis: Long = 6 * 60 * 60 * 1000L) {
         val now = System.currentTimeMillis()
-        listOf("in", "out").forEach { root ->
+        listOf("in", "out", "updates").forEach { root ->
             File(context.cacheDir, root).listFiles()?.filter { now - it.lastModified() > olderThanMillis }?.forEach { it.deleteRecursively() }
         }
     }

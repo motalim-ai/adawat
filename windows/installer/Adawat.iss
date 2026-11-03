@@ -92,6 +92,8 @@ Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: 
 
 [Run]
 Filename: "{app}\Adawat.exe"; Description: "{cm:Launch}"; Flags: nowait postinstall skipifsilent
+; An update from inside the app runs this installer silently; start the new version when it is done.
+Filename: "{app}\Adawat.exe"; Flags: nowait; Check: WizardSilent
 
 [UninstallRun]
 Filename: "{sys}\taskkill.exe"; Parameters: "/im Adawat.exe /f"; Flags: runhidden; RunOnceId: "StopAdawat"

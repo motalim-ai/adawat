@@ -73,6 +73,7 @@ public sealed class AdawatApp : Application
         }));
         _tray = new Tray();
         if (!Settings.Current.HasSeenWelcome) WelcomeWindow.Present();
+        else UpdateWindow.CheckAtStart();
     }
 
     protected override void OnExit(ExitEventArgs e)

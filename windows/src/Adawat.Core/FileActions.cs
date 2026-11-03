@@ -41,6 +41,13 @@ public static class FileActions
         return Task.FromResult<IReadOnlyList<string>>([]);
     }
 
+    private static void CopyFolder(string source, string target)
+    {
+        Directory.CreateDirectory(target);
+        foreach (var file in Directory.GetFiles(source)) File.Copy(file, Path.Combine(target, Path.GetFileName(file)));
+        foreach (var folder in Directory.GetDirectories(source)) CopyFolder(folder, Path.Combine(target, Path.GetFileName(folder)));
+    }
+
     public static async Task<IReadOnlyList<string>> Move(IReadOnlyList<string> files, OperationContext context)
     {
         if (ChooseFolder == null) throw new AdawatException("This tool needs its window.");
@@ -54,7 +61,18 @@ public static class FileActions
         foreach (var file in files)
         {
             var target = Output.Unique(Path.Combine(folder, Path.GetFileName(file.TrimEnd('\\', '/'))));
-            if (Directory.Exists(file)) Directory.Move(file, target); else File.Move(file, target);
+            if (!Directory.Exists(file)) File.Move(file, target);
+            else
+            {
+                try { Directory.Move(file, target); }
+                // Windows refuses different drive letters; Linux reports EXDEV (18) for another file system.
+                catch (IOException e) when (OperatingSystem.IsWindows() ? !string.Equals(Path.GetPathRoot(Path.GetFullPath(file)), Path.GetPathRoot(Path.GetFullPath(target)), StringComparison.OrdinalIgnoreCase) : e.HResult == 18)
+                {
+                    // Folders cannot be renamed onto another drive: copy everything, and remove the original only once it all arrived.
+                    CopyFolder(file, target);
+                    Directory.Delete(file, true);
+                }
+            }
             moved.Add(target);
         }
         context.Finish(files.Count == 1 ? $"Moved 1 item to {Path.GetFileName(folder)}" : $"Moved {files.Count} items to {Path.GetFileName(folder)}");

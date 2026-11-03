@@ -1,6 +1,7 @@
 using System.Net.Sockets;
 using System.Text;
 using Avalonia.Threading;
+using Adawat.Core;
 
 namespace Adawat.Linux.Desktop;
 

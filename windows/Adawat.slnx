@@ -2,4 +2,5 @@
   <Project Path="src/Adawat.Core/Adawat.Core.csproj" />
   <Project Path="src/Adawat.App/Adawat.App.csproj" />
   <Project Path="src/Adawat.Cli/Adawat.Cli.csproj" />
+  <Project Path="tests/Adawat.Core.Tests/Adawat.Core.Tests.csproj" />
 </Solution>

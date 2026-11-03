@@ -90,6 +90,8 @@ class WorkService : LifecycleService() {
                 notifyDone(id)
             } finally {
                 out.deleteRecursively()
+                // Each wheel runs one job, so its copies of the shared files are done with too.
+                files.firstOrNull()?.parentFile?.takeIf { it.parentFile == File(cacheDir, "in") }?.deleteRecursively()
                 running.remove(id)
                 if (running.isEmpty()) {
                     ServiceCompat.stopForeground(this@WorkService, ServiceCompat.STOP_FOREGROUND_REMOVE)

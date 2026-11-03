@@ -6,6 +6,9 @@ using ImageMagick;
 using PdfSharp.Pdf;
 using PdfSharp.Pdf.IO;
 using PdfSharp.Pdf.Advanced;
+using PdfSharp.Pdf.Content;
+using PdfSharp.Pdf.Content.Objects;
+using System.Numerics;
 using UglyToad.PdfPig.Content;
 using Pig = UglyToad.PdfPig;
 
@@ -350,11 +353,13 @@ public static class PdfOps
         return outputs;
     }
 
-    /// <summary>Re-encodes the pictures inside each PDF smaller (text and vectors stay as they are) and compresses every stream.</summary>
+    /// <summary>Re-encodes the pictures inside each PDF smaller (text and vectors stay as they are) and compresses every stream.
+    /// Each picture keeps enough pixels for the size the page shows it at, so a photo shown small loses only pixels nobody sees.</summary>
     public static async Task<IReadOnlyList<string>> Compress(IReadOnlyList<string> files, OperationContext context)
     {
         var preset = Settings.Current.CompressPreset;
-        var (maxPixels, quality) = preset switch { CompressPreset.Light => (2400, 82), CompressPreset.Balanced => (1800, 68), _ => (1300, 52) };
+        // dpi: pixels kept per inch the picture covers on the page; maxPixels: the most any picture keeps on its longest side.
+        var (dpi, maxPixels, quality) = preset switch { CompressPreset.Light => (220, 2400, 82), CompressPreset.Balanced => (150, 1800, 68), _ => (110, 1300, 55) };
         var outputs = new List<string>();
         long before = 0, after = 0;
         foreach (var file in files)
@@ -364,10 +369,14 @@ public static class PdfOps
             {
                 using var pdf = Open(file, PdfDocumentOpenMode.Modify);
                 var seen = new HashSet<PdfDictionary>();
+                var shown = new Dictionary<PdfDictionary, double>();
+                foreach (var page in pdf.Pages) Measure(ContentReader.ReadContent(page), page.Elements.GetDictionary("/Resources"), Matrix3x2.Identity, shown, 0);
                 for (var index = 0; index < pdf.PageCount; index++)
                 {
                     context.Progress((double)index / pdf.PageCount);
-                    foreach (var image in Images(pdf.Pages[index].Elements.GetDictionary("/Resources"), seen)) Recompress(image, maxPixels, quality);
+                    foreach (var image in Images(pdf.Pages[index].Elements.GetDictionary("/Resources"), seen))
+                        // Pictures under 800 pixels, such as logos, stay sharp: they cost little and the text in them blurs first.
+                        Recompress(image, shown.TryGetValue(image, out var inches) ? (int)Math.Ceiling(Math.Clamp(inches * dpi, 800, maxPixels)) : maxPixels, quality);
                 }
                 pdf.Options.CompressContentStreams = true;
                 pdf.Options.NoCompression = false;
@@ -386,7 +395,7 @@ public static class PdfOps
             outputs.Add(output);
         }
         if (outputs.Count == 0) throw new AdawatException("These PDFs are already as small as they get");
-        context.Finish(outputs.Count == 1 ? $"Compressed PDF · {100 - (int)Math.Round((double)after / before * 100)}% smaller"
+        context.Finish(outputs.Count == 1 ? $"Compressed PDF · {Math.Min(99, 100 - (int)Math.Round((double)after / before * 100))}% smaller"
                                           : Compression.Savings("PDF", outputs.Count, before, after));
         return outputs;
     }
@@ -407,20 +416,69 @@ public static class PdfOps
         }
     }
 
+    /// <summary>Records, for every picture the content draws, the longest side in inches it is ever shown at.</summary>
+    private static void Measure(CSequence content, PdfDictionary? resources, Matrix3x2 matrix, Dictionary<PdfDictionary, double> shown, int depth)
+    {
+        var objects = resources?.Elements.GetDictionary("/XObject");
+        var saved = new Stack<Matrix3x2>();
+        foreach (var item in content)
+        {
+            if (item is not COperator op) continue;
+            switch (op.OpCode.OpCodeName)
+            {
+                case OpCodeName.q: saved.Push(matrix); break;
+                case OpCodeName.Q: if (saved.Count > 0) matrix = saved.Pop(); break;
+                case OpCodeName.cm when op.Operands.Count == 6: matrix = Matrix(op.Operands) * matrix; break;
+                case OpCodeName.Do when op.Operands.Count == 1 && op.Operands[0] is CName name:
+                    if (objects?.Elements.GetReference(name.Name)?.Value is not PdfDictionary target) break;
+                    if (target.Elements.GetName("/Subtype") == "/Image")
+                    {
+                        // The picture fills the unit square, so the matrix's two axes are its drawn width and height. A stretched
+                        // picture keeps the pixels its denser side needs, given as inches along its longest side.
+                        var x = new Vector2(matrix.M11, matrix.M12).Length() / 72;
+                        var y = new Vector2(matrix.M21, matrix.M22).Length() / 72;
+                        var width = Math.Max(target.Elements.GetInteger("/Width"), 1);
+                        var height = Math.Max(target.Elements.GetInteger("/Height"), 1);
+                        shown[target] = Math.Max(shown.GetValueOrDefault(target), Math.Max(x / width, y / height) * Math.Max(width, height));
+                    }
+                    else if (target.Elements.GetName("/Subtype") == "/Form" && depth < 8 && target.Stream != null)
+                    {
+                        var form = target.Elements.GetArray("/Matrix") is { Elements.Count: 6 } m
+                            ? new Matrix3x2((float)Number(m.Elements[0]), (float)Number(m.Elements[1]), (float)Number(m.Elements[2]),
+                                            (float)Number(m.Elements[3]), (float)Number(m.Elements[4]), (float)Number(m.Elements[5]))
+                            : Matrix3x2.Identity;
+                        Measure(ContentReader.ReadContent(target.Stream.UnfilteredValue), target.Elements.GetDictionary("/Resources") ?? resources,
+                                form * matrix, shown, depth + 1);
+                    }
+                    break;
+            }
+        }
+    }
+
+    private static Matrix3x2 Matrix(CSequence operands) => new(Operand(operands[0]), Operand(operands[1]), Operand(operands[2]),
+                                                               Operand(operands[3]), Operand(operands[4]), Operand(operands[5]));
+
+    private static float Operand(CObject value) => value switch { CReal real => (float)real.Value, CInteger integer => integer.Value, _ => 0 };
+
+    private static double Number(PdfItem item) => item switch { PdfReal real => real.Value, PdfInteger integer => integer.Value, _ => 0 };
+
+    /// <summary>"/DCTDecode" also for a one-filter array, as many PDF writers store it.</summary>
+    private static string Single(PdfItem? item) => item is PdfArray { Elements.Count: 1 } array ? array.Elements[0].ToString()! : item?.ToString() ?? "";
+
     private static void Recompress(PdfDictionary image, int maxPixels, int quality)
     {
         if (image.Stream == null || image.Elements.ContainsKey("/ImageMask") || image.Elements.GetBoolean("/ImageMask")) return;
-        var filter = image.Elements["/Filter"]?.ToString() ?? "";
+        var filter = Single(image.Elements["/Filter"]);
         var width = image.Elements.GetInteger("/Width");
         var height = image.Elements.GetInteger("/Height");
         var bits = image.Elements.GetInteger("/BitsPerComponent");
-        var space = image.Elements["/ColorSpace"]?.ToString() ?? "";
+        var space = image.Elements["/ColorSpace"] is PdfReference { Value: PdfArray } or PdfArray ? IccSpace(image.Elements["/ColorSpace"]) : image.Elements["/ColorSpace"]?.ToString() ?? "";
         if (width < 64 || height < 64) return;
         MagickImage? decoded = null;
         try
         {
-            if (filter.Contains("/DCTDecode") && !filter.Contains('[')) decoded = new MagickImage(image.Stream.Value);
-            else if (filter.Contains("/FlateDecode") && !filter.Contains('[') && bits == 8 && space is "/DeviceRGB" or "/DeviceGray")
+            if (filter == "/DCTDecode") decoded = new MagickImage(image.Stream.Value);
+            else if (filter == "/FlateDecode" && bits == 8 && space is "/DeviceRGB" or "/DeviceGray")
             {
                 var raw = image.Stream.UnfilteredValue;
                 var channels = space == "/DeviceRGB" ? 3 : 1;
@@ -431,6 +489,9 @@ public static class PdfOps
             if (decoded.ColorSpace == ColorSpace.CMYK) return;
             if (Math.Max(decoded.Width, decoded.Height) > maxPixels) decoded.Resize(new MagickGeometry((uint)maxPixels, (uint)maxPixels));
             decoded.Quality = (uint)quality;
+            // Same pixels, smaller file: optimized Huffman tables, written progressively.
+            decoded.Settings.Interlace = Interlace.Jpeg;
+            decoded.Settings.SetDefine(MagickFormat.Jpeg, "optimize-coding", "true");
             decoded.Strip();
             var jpeg = decoded.ToByteArray(MagickFormat.Jpeg);
             if (jpeg.Length >= image.Stream.Length * 0.9) return;
@@ -444,6 +505,15 @@ public static class PdfOps
         }
         catch (MagickException) { }
         finally { decoded?.Dispose(); }
+    }
+
+    /// <summary>An ICC colour space (what most office apps write) read as the plain RGB or grey it holds.</summary>
+    private static string IccSpace(PdfItem? item)
+    {
+        var array = (item as PdfReference)?.Value as PdfArray ?? item as PdfArray;
+        if (array is not { Elements.Count: 2 } || array.Elements[0].ToString() != "/ICCBased") return "";
+        var profile = (array.Elements[1] as PdfReference)?.Value as PdfDictionary;
+        return profile?.Elements.GetInteger("/N") switch { 3 => "/DeviceRGB", 1 => "/DeviceGray", _ => "" };
     }
 
     /// <summary>Writes the pages in <paramref name="slots"/> order, each turned by its extra rotation. With <paramref name="equalWidths"/>,

@@ -47,6 +47,7 @@ public sealed class Tray : IDisposable
         menu.Items.Add(new Separator());
         menu.Items.Add(Item("Welcome Guide…", WelcomeWindow.Present, ""));
         menu.Items.Add(Item("Settings…", SettingsWindow.Present, ""));
+        menu.Items.Add(Item("Check for Updates…", UpdateWindow.CheckNow, "\uE896"));
         menu.Items.Add(new Separator());
         menu.Items.Add(Item("Exit Adawat", () => Application.Current.Shutdown(), ""));
         menu.Opened += (_, _) => closeFloats.IsEnabled = Floats.Any;

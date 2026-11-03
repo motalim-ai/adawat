@@ -59,7 +59,9 @@ enum ArchiveOps {
             format = .tgz
         }
         let out = Output.url(named: "\(source.lastPathComponent).\(format.suffix)", near: files[0])
-        let parent = source.deletingLastPathComponent().path, name = source.lastPathComponent
+        let parent = source.deletingLastPathComponent().path
+        // bsdtar would read a name like "-backup" as an option.
+        let name = source.lastPathComponent.hasPrefix("-") ? "./" + source.lastPathComponent : source.lastPathComponent
         switch format {
         case .zip:
             try await ProcessRunner.run(ditto, ["-c", "-k", "--sequesterRsrc", "--keepParent", source.path, out.path])

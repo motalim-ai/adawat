@@ -152,7 +152,7 @@ public static partial class Compression
     {
         var label = $"{count} {noun}{(count == 1 ? "" : "s")}";
         if (before <= 0) return $"Compressed {label}";
-        var saved = 100 - (int)Math.Round((double)after / before * 100);
+        var saved = Math.Min(99, 100 - (int)Math.Round((double)after / before * 100));
         return saved > 0 ? $"Compressed {label} · {saved}% smaller" : $"Compressed {label} · already as small as it gets";
     }
 }

@@ -127,6 +127,7 @@ public sealed class AdawatApp : Application
         Task.Run(ShellExtension.EnsureInstalled);
         Task.Run(FileManagers.Install);
         if (!Settings.Current.HasSeenWelcome) WelcomeWindow.Present();
+        else UpdateWindow.CheckAtStart();
     }
 
     public void Quit()

@@ -11,7 +11,7 @@ public static class Output
             case OutputLocation.Desktop: return DesktopFolder;
         }
         var parent = Path.GetDirectoryName(Path.GetFullPath(source)) ?? Downloads;
-        return IsWritable(parent) ? parent : Downloads;
+        return Writable.GetOrAdd(parent, IsWritable) ? parent : Downloads;
     }
 
 #if WINDOWS
@@ -54,6 +54,9 @@ public static class Output
 
     /// <summary>A scratch folder that is removed when disposed.</summary>
     public static TempFolder Temp() => new();
+
+    /// <summary>Probed once per folder: each probe is a real file, which synced folders would upload and delete again.</summary>
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, bool> Writable = new();
 
     private static bool IsWritable(string folder)
     {

@@ -11,8 +11,9 @@ android {
         applicationId = "com.motalim.adawat"
         minSdk = 29
         targetSdk = 37
-        versionCode = 1
         versionName = "1.1.0"
+        // 1.2.3 → 10203, so every release installs over the one before it.
+        versionCode = versionName!!.split(".").fold(0) { code, part -> code * 100 + part.toInt() }
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }
     }
 

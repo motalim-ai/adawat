@@ -35,7 +35,8 @@ enum SubtitleOps {
         let parts = text.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: ".").split(separator: ":")
         guard (2...3).contains(parts.count) else { return nil }
         let values = parts.compactMap { Double($0) }
-        guard values.count == parts.count else { return nil }
+        // "inf" and huge numbers parse as Doubles but would crash the Int conversion in stamp().
+        guard values.count == parts.count, values.allSatisfy({ $0.isFinite && $0 >= 0 && $0 < 1_000_000 }) else { return nil }
         return values.reduce(0) { $0 * 60 + $1 }
     }
 

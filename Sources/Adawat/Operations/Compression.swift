@@ -191,6 +191,11 @@ enum Compression {
                     throw AdawatError.message("Could not fit \(file.lastPathComponent) within \(ByteText.string(limit)). Choose a larger size.")
                 }
             }
+            // At the lowest bitrate the loop stops early; a file still over the target is no result.
+            if let limit, ImageOps.fileSize(out) > limit {
+                try? FileManager.default.removeItem(at: out)
+                throw AdawatError.message("Could not fit \(file.lastPathComponent) within \(ByteText.string(limit)). Choose a larger size.")
+            }
             before += info.fileSize
             after += ImageOps.fileSize(out)
             outputs.append(out)

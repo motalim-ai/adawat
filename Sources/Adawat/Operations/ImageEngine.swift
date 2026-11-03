@@ -206,7 +206,10 @@ enum ImageEngine {
     // MARK: Metadata
 
     /// Removes camera, location and editing data without re-compressing the pixels when the format allows.
-    static func stripMetadata(_ file: ImageFile, to out: URL) async throws {
+    /// Returns where the copy went: `out`, or `out` with another extension when the original format cannot be
+    /// written (RAW, PSD, or WebP without cwebp) and the copy is saved as PNG.
+    @discardableResult
+    static func stripMetadata(_ file: ImageFile, to out: URL) async throws -> URL {
         let format = ImageFormat.of(file.url) ?? .png
         if format != .webp, let type = file.typeIdentifier, writableTypes.contains(type),
            let destination = CGImageDestinationCreateWithURL(out as CFURL, type as CFString, 1, nil) {
@@ -222,10 +225,13 @@ enum ImageEngine {
                 kCGImageMetadataShouldExcludeGPS: true,
                 kCGImageMetadataShouldExcludeXMP: true,
             ]
-            if CGImageDestinationCopyImageSource(destination, file.source, options as CFDictionary, nil) { return }
+            if CGImageDestinationCopyImageSource(destination, file.source, options as CFDictionary, nil) { return out }
             try? FileManager.default.removeItem(at: out)
         }
-        try await save(file, as: canWrite(format) ? format : .png, to: out, quality: 0.95, keepMetadata: false)
+        let written = canWrite(format) ? format : .png
+        let target = written == format ? out : Output.unique(out.deletingPathExtension().appendingPathExtension(written.ext))
+        try await save(file, as: written, to: target, quality: 0.95, keepMetadata: false)
+        return target
     }
 
     // MARK: Rotation

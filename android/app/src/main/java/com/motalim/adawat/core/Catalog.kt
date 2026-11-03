@@ -141,7 +141,7 @@ object Catalog {
         }
 
         if (kinds == setOf(FileKind.Pdf)) {
-            ops += tool("pdf.compress", "Compress", null, Icons.Compress, { f, c -> PdfOps.compress(f, c) })
+            ops += tool("pdf.compress", "Compress", null, Icons.Compress, { f, c -> PdfOps.compress(f, c) }, "compress")
             ops += tool("pdf.metadata", "Remove Metadata", "Metadata", Icons.Metadata, PdfOps::stripMetadata)
             ops += if (single) tool("pdf.organize", "Organize Pages", "Organize", Icons.Organize, PdfOps::organize, "organize")
                    else tool("pdf.merge", "Merge PDFs", "Merge", Icons.Merge, PdfOps::merge, "merge")

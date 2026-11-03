@@ -10,16 +10,18 @@ import com.motalim.adawat.core.AdawatException
 import java.io.File
 
 object Images {
+    private const val MAX_PIXELS = 50_000_000.0
+
     /** Decodes any picture Android can read, already turned upright, in software memory so its pixels can be read. */
     fun decode(file: File, maxSide: Int = 0): Bitmap = try {
         ImageDecoder.decodeBitmap(ImageDecoder.createSource(file)) { decoder, info, _ ->
             decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
             decoder.isMutableRequired = false
             val side = maxOf(info.size.width, info.size.height)
-            if (maxSide in 1 until side) {
-                val scale = maxSide.toDouble() / side
-                decoder.setTargetSize((info.size.width * scale).toInt().coerceAtLeast(1), (info.size.height * scale).toInt().coerceAtLeast(1))
-            }
+            // Even at full size, at most 50 MP (200 MB of pixels): a 200 MP photo would otherwise get the app killed.
+            val pixels = info.size.width.toDouble() * info.size.height
+            val scale = minOf(if (maxSide in 1 until side) maxSide.toDouble() / side else 1.0, Math.sqrt(MAX_PIXELS / pixels))
+            if (scale < 1) decoder.setTargetSize((info.size.width * scale).toInt().coerceAtLeast(1), (info.size.height * scale).toInt().coerceAtLeast(1))
         }.let { if (it.config == Bitmap.Config.ARGB_8888) it else it.copy(Bitmap.Config.ARGB_8888, false) }
     } catch (e: Exception) {
         throw AdawatException("Could not read ${file.name}.")

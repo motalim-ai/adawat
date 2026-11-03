@@ -33,6 +33,9 @@
     <Compile Remove="Platform/Windows/**" />
   </ItemGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="Adawat.Core.Tests" />
+  </ItemGroup>
+  <ItemGroup>
     <!-- WithCulture="false": the ".ar" in the name would otherwise move the file into an Arabic satellite assembly. -->
     <EmbeddedResource Include="$(MSBuildThisFileDirectory)../../shared/strings.ar.json" LogicalName="strings.ar.json" WithCulture="false" />
     <EmbeddedResource Include="$(MSBuildThisFileDirectory)../../shared/patterns.ar.json" LogicalName="patterns.ar.json" WithCulture="false" />

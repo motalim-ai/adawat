@@ -1,4 +1,7 @@
 {
+ "Adawat {1} is available": "الإصدار {1} من أدوات متاح",
+ "Adawat {1} is available. You have {2}.": "الإصدار {1} من أدوات متاح. لديك الإصدار {2}.",
+ "Adawat {1} is the latest version": "لديك أحدث إصدار من أدوات ({1})",
  "Adding background {1} of {2}": "جارٍ إضافة الخلفية {1} من {2}",
  "Allow Adawat to control {1} in System Settings › Privacy & Security › Automation.": "اسمح لتطبيق أدوات بالتحكم في {1} من إعدادات النظام › الخصوصية والأمان › الأتمتة.",
  "Audio keeps its pitch. The new length is {1}.": "يحتفظ الصوت بطبقته. المدة الجديدة {1}.",

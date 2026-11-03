@@ -33,6 +33,9 @@ public sealed class Settings
     public int CompressImageMaxPixels { get; set; }
     public int CompressVideoMaxHeight { get; set; }
     public bool HasSeenWelcome { get; set; }
+    public bool CheckForUpdates { get; set; } = true;
+    /// <summary>The release the user chose to skip, such as "1.2.0"; no reminder until a newer one.</summary>
+    public string? SkippedVersion { get; set; }
     /// <summary>"ar" or "en". The first run follows Windows' display language.</summary>
     public string Language { get; set; } = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ar" ? "ar" : "en";
 

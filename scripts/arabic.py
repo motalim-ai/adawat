@@ -288,9 +288,23 @@ WINDOWS_STATIC = {
     "Move up": "تحريك لأعلى", "Move down": "تحريك لأسفل", "Fewer": "أقل", "More": "أكثر",
     "Paste an image with Ctrl+V or choose one. Drag it to move.": "الصق صورة بـ Ctrl+V أو اخترها. اسحبها لتحريكها.",
     "Could not play the preview. ": "تعذّر تشغيل المعاينة. ",
+    # Updates (Windows and Linux)
+    "Check for Updates": "التحقق من التحديثات", "Checking for updates": "جارٍ التحقق من التحديثات",
+    "Check for updates when Adawat starts": "التحقق من التحديثات عند تشغيل أدوات", "Updates": "التحديثات", "Check Now": "تحقق الآن",
+    "Could not check for updates. Check your internet connection.": "تعذّر التحقق من التحديثات. تأكد من اتصالك بالإنترنت.",
+    "Update Adawat": "تحديث أدوات", "Your settings and files stay as they are.": "تبقى إعداداتك وملفاتك كما هي.",
+    "What's new": "الجديد", "Skip This Version": "تخطَّ هذا الإصدار", "Later": "لاحقًا", "Update Now": "حدّث الآن",
+    "Downloading the update": "جارٍ تنزيل التحديث",
+    "The update did not download correctly. Try again later.": "لم يُنزَّل التحديث بشكل صحيح. حاول مرة أخرى لاحقًا.",
+    "Could not download the update. Check your internet connection.": "تعذّر تنزيل التحديث. تأكد من اتصالك بالإنترنت.",
+    "Install the downloaded package to finish the update": "ثبّت الحزمة التي نُزّلت لإكمال التحديث",
+    "Adawat cannot replace itself in this folder. Download the new version from GitHub.": "لا يستطيع أدوات استبدال نفسه في هذا المجلد. نزّل الإصدار الجديد من GitHub.",
 }
 WINDOWS_DYNAMIC = {
     "Drag files, then press {1}, {2} or {3}": "اسحب الملفات ثم اضغط {1} أو {2} أو {3}",
+    "Adawat {1} is available": "الإصدار {1} من أدوات متاح",
+    "Adawat {1} is available. You have {2}.": "الإصدار {1} من أدوات متاح. لديك الإصدار {2}.",
+    "Adawat {1} is the latest version": "لديك أحدث إصدار من أدوات ({1})",
 }
 
 # Text only the Linux app shows (it reads the same JSON as the Windows app).

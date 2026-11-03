@@ -306,8 +306,11 @@ cd android && ./gradlew assembleDebug                          # app/build/outpu
 
 ## Privacy
 
-Adawat never sends your files anywhere, on Mac, Windows, Linux or Android. It has no analytics, no account and no network
-features. On Mac, Pages, Keynote and Numbers are asked (with your permission) only when you convert their formats.
+Adawat never sends your files anywhere, on Mac, Windows, Linux or Android. It has no analytics and no account. Its only
+network request is on Windows, Linux and Android: when it starts, it asks GitHub Releases whether a newer version is out, and it
+downloads one only when you press **Update Now**, checking it against the SHA-256 GitHub lists. Turn this off in
+Settings with **Check for updates when Adawat starts**. On Mac, Pages, Keynote and Numbers are asked (with your
+permission) only when you convert their formats.
 
 ## License
 

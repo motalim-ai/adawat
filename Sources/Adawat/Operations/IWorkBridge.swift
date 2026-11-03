@@ -68,6 +68,9 @@ enum IWorkBridge {
                 if (count of documents) > countBefore then exit repeat
                 delay 0.1
             end repeat
+            -- No new document: the file was already open or asked for a password. The front document is then
+            -- someone else's, so it must not be exported or closed.
+            if (count of documents) is not greater than countBefore then error "ADAWAT_NOT_OPENED"
             set theDocument to front document
             \(action)
             close theDocument saving no
@@ -79,6 +82,9 @@ enum IWorkBridge {
         } catch {
             let message = error.localizedDescription
             DebugLog.write("\(app.rawValue) bridge failed for \(input.lastPathComponent): \(message)")
+            if message.contains("ADAWAT_NOT_OPENED") {
+                throw AdawatError.message("\(app.rawValue) did not open \(input.lastPathComponent). Close it if it is open there, or remove its password, and try again.")
+            }
             if message.contains("-1743") || message.lowercased().contains("not authorized") {
                 throw AdawatError.message("Allow Adawat to control \(app.rawValue) in System Settings › Privacy & Security › Automation.")
             }

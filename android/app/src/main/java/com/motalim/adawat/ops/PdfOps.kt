@@ -8,6 +8,15 @@ import com.motalim.adawat.AdawatApp
 import com.motalim.adawat.core.AdawatException
 import com.motalim.adawat.core.OperationContext
 import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
+import com.tom_roush.pdfbox.contentstream.PDFStreamEngine
+import com.tom_roush.pdfbox.contentstream.operator.DrawObject
+import com.tom_roush.pdfbox.contentstream.operator.Operator
+import com.tom_roush.pdfbox.contentstream.operator.state.Concatenate
+import com.tom_roush.pdfbox.contentstream.operator.state.Restore
+import com.tom_roush.pdfbox.contentstream.operator.state.Save
+import com.tom_roush.pdfbox.contentstream.operator.state.SetGraphicsStateParameters
+import com.tom_roush.pdfbox.contentstream.operator.state.SetMatrix
+import com.tom_roush.pdfbox.cos.COSBase
 import com.tom_roush.pdfbox.cos.COSName
 import com.tom_roush.pdfbox.io.MemoryUsageSetting
 import com.tom_roush.pdfbox.multipdf.PDFMergerUtility
@@ -23,6 +32,7 @@ import com.tom_roush.pdfbox.text.TextPosition
 import kotlinx.coroutines.ensureActive
 import java.io.File
 import kotlin.coroutines.coroutineContext
+import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -419,12 +429,16 @@ object PdfOps {
         return outputs
     }
 
-    /** Re-encodes the pictures inside each PDF smaller; text and drawings stay as they are. */
-    suspend fun compress(files: List<File>, context: OperationContext, preset: ImageTools.Preset = ImageTools.Preset.Balanced): List<File> {
-        val (maxPixels, quality) = when (preset) {
-            ImageTools.Preset.Light -> 2400 to 0.82f
-            ImageTools.Preset.Balanced -> 1800 to 0.68f
-            ImageTools.Preset.Strong -> 1300 to 0.52f
+    /**
+     * Re-encodes the pictures inside each PDF smaller; text and drawings stay as they are. Each picture keeps enough
+     * pixels for the size the page shows it at, so a photo shown small loses only pixels nobody sees.
+     */
+    suspend fun compress(files: List<File>, context: OperationContext, preset: ImageTools.Preset = ImageTools.Preset.valueOf(context.text("preset", "Balanced"))): List<File> {
+        // dpi: pixels kept per inch the picture covers on the page; maxPixels: the most any picture keeps on its longest side.
+        val (dpi, maxPixels, quality) = when (preset) {
+            ImageTools.Preset.Light -> Triple(220, 2400, 0.82f)
+            ImageTools.Preset.Balanced -> Triple(150, 1800, 0.68f)
+            ImageTools.Preset.Strong -> Triple(110, 1300, 0.55f)
         }
         val outputs = mutableListOf<File>()
         var before = 0L
@@ -432,12 +446,15 @@ object PdfOps {
         for (file in files) {
             val output = context.pathFor(file, "pdf", "compressed")
             open(file).use { document ->
-                val seen = HashSet<Any>()
+                val placements = Placements()
+                document.pages.forEach { runCatching { placements.processPage(it) } }
+                val done = HashMap<Any, PDImageXObject?>()
                 document.pages.forEachIndexed { index, page ->
                     coroutineContext.ensureActive()
                     context.report("Compressing page ${index + 1} of ${document.numberOfPages}")
                     context.progress(index.toDouble() / document.numberOfPages)
-                    page.resources?.let { recompress(document, it, seen, maxPixels, quality) }
+                    // Pictures under 800 pixels, such as logos, stay sharp: they cost little and the text in them blurs first.
+                    page.resources?.let { recompress(document, it, done, quality) { image -> placements.shown[image]?.let { (it * dpi).coerceIn(800f, maxPixels.toFloat()).roundToInt() } ?: maxPixels } }
                 }
                 document.save(output)
             }
@@ -447,29 +464,56 @@ object PdfOps {
             outputs += output
         }
         if (outputs.isEmpty()) throw AdawatException("These PDFs are already as small as they get")
-        val saved = 100 - (after.toDouble() / before * 100).roundToInt()
+        val saved = min(99, 100 - (after.toDouble() / before * 100).roundToInt())
         context.finish(if (outputs.size == 1) "Compressed PDF · $saved% smaller" else "Compressed ${outputs.size} PDFs · $saved% smaller")
         return outputs
     }
 
-    private fun recompress(document: PDDocument, resources: PDResources, seen: MutableSet<Any>, maxPixels: Int, quality: Float) {
+    /** [done] maps each picture already handled to its smaller copy (or null when it stays), so pages sharing it share the copy. */
+    private fun recompress(document: PDDocument, resources: PDResources, done: MutableMap<Any, PDImageXObject?>, quality: Float, limit: (Any) -> Int) {
         for (name in resources.xObjectNames) {
             val item = runCatching { resources.getXObject(name) }.getOrNull() ?: continue
-            if (!seen.add(item.cosObject)) continue
+            if (item.cosObject in done) { done[item.cosObject]?.let { resources.put(name, it) }; continue }
+            done[item.cosObject] = null
             when (item) {
-                is PDFormXObject -> item.resources?.let { recompress(document, it, seen, maxPixels, quality) }
+                is PDFormXObject -> item.resources?.let { recompress(document, it, done, quality, limit) }
                 is PDImageXObject -> {
                     if (item.isStencil || item.width < 64 || item.height < 64) continue
-                    // Pictures with transparency masks or unusual colours keep their own encoding.
-                    if (item.cosObject.containsKey(COSName.SMASK) || item.cosObject.containsKey(COSName.MASK)) continue
+                    // Colour-keyed pictures keep their own encoding: a JPEG would blur the key colour.
+                    if (item.cosObject.containsKey(COSName.MASK)) continue
                     val bitmap = runCatching { item.image }.getOrNull() ?: continue
-                    val scale = min(1f, maxPixels.toFloat() / max(bitmap.width, bitmap.height))
+                    val scale = min(1f, limit(item.cosObject).toFloat() / max(bitmap.width, bitmap.height))
                     val sized = if (scale < 1f) Bitmap.createScaledBitmap(bitmap, (bitmap.width * scale).roundToInt(), (bitmap.height * scale).roundToInt(), true) else bitmap
                     val smaller = runCatching { JPEGFactory.createFromImage(document, Images.flatten(sized), quality) }.getOrNull() ?: continue
-                    val before = item.cosObject.length
-                    if (smaller.cosObject.length < before) resources.put(name, smaller)
+                    if (smaller.cosObject.length >= item.cosObject.length * 0.9) continue
+                    // The transparency stays as it was; a soft mask may differ in size from its picture.
+                    item.cosObject.getItem(COSName.SMASK)?.let { smaller.cosObject.setItem(COSName.SMASK, it) }
+                    resources.put(name, smaller)
+                    done[item.cosObject] = smaller
                 }
             }
+        }
+    }
+
+    /** Finds the longest side, in inches, each picture is shown at on the pages it processes. */
+    private class Placements : PDFStreamEngine() {
+        val shown = HashMap<Any, Float>()
+
+        init {
+            listOf(Concatenate(), DrawObject(), SetGraphicsStateParameters(), Save(), Restore(), SetMatrix()).forEach(::addOperator)
+        }
+
+        override fun processOperator(operator: Operator, operands: List<COSBase>) {
+            val image = if (operator.name == "Do") (operands.firstOrNull() as? COSName)?.let { runCatching { resources.getXObject(it) }.getOrNull() } as? PDImageXObject else null
+            if (image == null) return super.processOperator(operator, operands)
+            // The picture fills the unit square, so the matrix's two axes are its drawn width and height. A stretched
+            // picture keeps the pixels its denser side needs, given as inches along its longest side.
+            val matrix = graphicsState.currentTransformationMatrix
+            val x = hypot(matrix.getValue(0, 0), matrix.getValue(0, 1)) / 72
+            val y = hypot(matrix.getValue(1, 0), matrix.getValue(1, 1)) / 72
+            val width = max(image.width, 1)
+            val height = max(image.height, 1)
+            shown.merge(image.cosObject, max(x / width, y / height) * max(width, height), ::max)
         }
     }
 

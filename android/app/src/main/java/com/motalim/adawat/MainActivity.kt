@@ -27,7 +27,21 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.Switch
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import com.motalim.adawat.core.Release
+import com.motalim.adawat.core.Updates
+import kotlinx.coroutines.launch
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -108,6 +122,8 @@ private fun Home(onFiles: (List<Uri>) -> Unit, onLanguage: (String) -> Unit) {
                  style = MaterialTheme.typography.bodySmall, color = Look.Muted)
             Spacer(Modifier.height(24.dp))
             LanguagePicker(onLanguage)
+            Spacer(Modifier.height(24.dp))
+            UpdateSection()
         }
     }
 }
@@ -146,3 +162,79 @@ private fun LanguagePicker(onLanguage: (String) -> Unit) {
     }
 }
 
+
+/** Checks GitHub Releases at start (unless turned off) or on request, and offers a newer version with its notes. */
+@Composable
+private fun UpdateSection() {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var automatic by remember { mutableStateOf(Settings.checkForUpdates(context)) }
+    var release by remember { mutableStateOf<Release?>(null) }
+    var progress by remember { mutableStateOf<Float?>(null) }
+    var status by remember { mutableStateOf("") }
+
+    fun check(quiet: Boolean) = scope.launch {
+        if (!quiet) status = L10n.t("Checking for updates…")
+        status = try {
+            val found = Updates.latest()
+            if (found != null && !(quiet && found.version == Settings.skippedVersion(context))) release = found
+            if (found != null || quiet) "" else L10n.t("Adawat ${Updates.current} is the latest version")
+        } catch (e: Exception) {
+            if (quiet) "" else L10n.t("Could not check for updates. Check your internet connection.")
+        }
+    }
+    LaunchedEffect(Unit) { if (automatic) check(quiet = true) }
+
+    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(L10n.t("Check for updates when Adawat starts"), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onBackground)
+            Switch(automatic, { automatic = it; Settings.setCheckForUpdates(context, it) })
+        }
+        TextButton(onClick = { check(quiet = false) }) { Text(L10n.t("Check for Updates…")) }
+        if (status.isNotEmpty()) Text(status, style = MaterialTheme.typography.bodySmall, color = Look.Muted)
+    }
+
+    val shown = release ?: return
+    AlertDialog(
+        onDismissRequest = { if (progress == null) release = null },
+        title = { Text(L10n.t("Update Adawat")) },
+        text = {
+            Column {
+                Text(L10n.t("Adawat ${shown.version} is available. You have ${Updates.current}."), fontWeight = FontWeight.SemiBold)
+                Text(L10n.t("Your settings and files stay as they are."), style = MaterialTheme.typography.bodySmall, color = Look.Muted)
+                if (shown.notes.isNotEmpty()) {
+                    Spacer(Modifier.height(12.dp))
+                    Text(L10n.t("What's new"), style = MaterialTheme.typography.labelLarge, color = Look.Muted)
+                    Text(shown.notes, Modifier.heightIn(max = 240.dp).verticalScroll(rememberScrollState()), style = MaterialTheme.typography.bodySmall)
+                }
+                progress?.let { fraction ->
+                    Spacer(Modifier.height(12.dp))
+                    LinearProgressIndicator(progress = { fraction }, modifier = Modifier.fillMaxWidth())
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = progress == null, onClick = {
+                scope.launch {
+                    progress = 0f
+                    try {
+                        val apk = Updates.download(context, shown) { progress = it }
+                        release = null
+                        Updates.install(context, apk)
+                    } catch (e: Exception) {
+                        release = null
+                        status = L10n.t(if (e is Updates.DamagedDownload) e.message!! else "Could not download the update. Check your internet connection.")
+                    } finally {
+                        progress = null
+                    }
+                }
+            }) { Text(L10n.t("Update Now")) }
+        },
+        dismissButton = {
+            Row {
+                TextButton(enabled = progress == null, onClick = { Settings.setSkippedVersion(context, shown.version); release = null }) { Text(L10n.t("Skip This Version")) }
+                TextButton(enabled = progress == null, onClick = { release = null }) { Text(L10n.t("Later")) }
+            }
+        },
+    )
+}

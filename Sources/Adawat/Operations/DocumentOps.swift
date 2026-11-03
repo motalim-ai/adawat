@@ -54,6 +54,10 @@ enum DocumentOps {
         for (index, file) in files.enumerated() {
             context.report("Converting \(index + 1) of \(files.count)")
             let out = Output.url(for: file, extension: target.rawValue)
+            if target == .pdf, WordPrinter.handles(file), await WordPrinter.print(file, to: out) {
+                outputs.append(out)
+                continue
+            }
             try await write(try await load(file), as: target, to: out, title: file.deletingPathExtension().lastPathComponent)
             outputs.append(out)
         }

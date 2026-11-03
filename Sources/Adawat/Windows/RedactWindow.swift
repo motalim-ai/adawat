@@ -265,8 +265,8 @@ struct RedactView: View {
                 Redactor.apply(boxes, style: style, color: color, to: $0)
             }
             let clean = Output.temporaryURL(extension: format.ext)
-            try await ImageEngine.stripMetadata(try ImageFile(out), to: clean)
-            _ = try FileManager.default.replaceItemAt(out, withItemAt: clean)
+            let written = try await ImageEngine.stripMetadata(try ImageFile(out), to: clean)
+            _ = try FileManager.default.replaceItemAt(out, withItemAt: written)
             return [out]
         }
     }

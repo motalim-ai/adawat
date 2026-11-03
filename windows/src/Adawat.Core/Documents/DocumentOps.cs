@@ -44,6 +44,11 @@ public static class DocumentOps
             context.Progress((double)index / files.Count);
             var file = files[index];
             var output = Output.PathFor(file, target.Ext());
+            if (target == DocumentTarget.Pdf && await TryPrintWord(file, output))
+            {
+                outputs.Add(output);
+                continue;
+            }
             await Write(await Load(file), target, output);
             outputs.Add(output);
         }
@@ -62,6 +67,22 @@ public static class DocumentOps
             case DocumentTarget.Rtf: await Task.Run(() => Rtf.Write(doc, output)); break;
             case DocumentTarget.Html: await File.WriteAllTextAsync(output, DocText.Html(doc), new UTF8Encoding(false)); break;
             case DocumentTarget.Odt: await Task.Run(() => Odt.Write(doc, output)); break;
+        }
+    }
+
+    /// <summary>A Word document printed to PDF by Word or LibreOffice, which keep its letterhead and layout. False when
+    /// neither is installed or the export failed, and the document then goes through <see cref="Doc"/> instead.</summary>
+    private static async Task<bool> TryPrintWord(string file, string output)
+    {
+        if (!Office.CanPrintWord(FileKinds.Ext(file))) return false;
+        try
+        {
+            await Office.WordToPdf(file, output);
+            return File.Exists(output);
+        }
+        catch (Exception)
+        {
+            return false;
         }
     }
 

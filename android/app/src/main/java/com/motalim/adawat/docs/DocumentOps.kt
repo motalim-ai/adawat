@@ -46,8 +46,22 @@ object DocumentOps {
         context.report("Converting ${index + 1} of ${files.size}")
         context.progress(index.toDouble() / files.size)
         val output = context.pathFor(file, target.ext)
+        if (target == DocumentTarget.Pdf && file.ext == "docx" && printWord(file, output)) return@mapIndexed output
         write(load(file), target, output)
         output
+    }
+
+    /** A Word document drawn page by page with its letterhead, header, footer and layout ([DocxPdf]). False when that
+     *  fails, and the document then goes through [Doc] and [DocPdf] instead, which keep the text only. */
+    private fun printWord(file: File, output: File): Boolean = try {
+        DocxPdf.write(file, output)
+        output.isFile && output.length() > 0
+    } catch (e: Exception) {
+        if (e is kotlinx.coroutines.CancellationException) throw e
+        android.util.Log.w("Adawat", "Word page layout failed for ${file.name}, using the plain layout", e)
+        false
+    } catch (e: OutOfMemoryError) {
+        false
     }
 
     /** Text in UTF-8, UTF-16 or, failing those, the Arabic Windows code page that older files use. */

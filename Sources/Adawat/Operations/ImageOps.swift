@@ -86,8 +86,7 @@ enum ImageOps {
         var outputs: [URL] = []
         for url in files {
             let out = Output.url(for: url, extension: url.pathExtension, suffix: "clean")
-            try await ImageEngine.stripMetadata(try ImageFile(url), to: out)
-            outputs.append(out)
+            outputs.append(try await ImageEngine.stripMetadata(try ImageFile(url), to: out))
         }
         context.finish(with: "Metadata removed from \(files.count) image\(files.count == 1 ? "" : "s")")
         return outputs

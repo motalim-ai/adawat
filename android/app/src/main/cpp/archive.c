@@ -69,6 +69,11 @@ Java_com_motalim_adawat_ops_ArchiveNative_extract(JNIEnv *env, jclass cls, jstri
             archive_read_data_skip(in);
             continue;
         }
+        // A link could point anywhere, such as the app's own data, which saving would then copy out.
+        if (archive_entry_filetype(entry) == AE_IFLNK) {
+            archive_read_data_skip(in);
+            continue;
+        }
         snprintf(target, sizeof target, "%s/%s", dest, name);
         archive_entry_set_pathname(entry, target);
         const char *link = archive_entry_hardlink(entry);
