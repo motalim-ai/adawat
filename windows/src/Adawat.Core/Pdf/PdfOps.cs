@@ -93,6 +93,7 @@ public static class PdfOps
         var outputs = new List<string>();
         foreach (var file in files)
         {
+            context.ThrowIfCancelled();
             var output = Output.PathFor(file, "txt");
             await File.WriteAllTextAsync(output, await Text(file, context), new UTF8Encoding(false));
             outputs.Add(output);
@@ -151,6 +152,8 @@ public static class PdfOps
         var body = allSizes.Count > 0 ? allSizes[allSizes.Count / 2] : 10;
         for (var index = 1; index <= pdf.NumberOfPages; index++)
         {
+            // Read for a conversion, with no context of its own: the running operation's Cancel stops it between pages.
+            ProcessRunner.Ambient.Value.ThrowIfCancellationRequested();
             if (index > 1) doc.Blocks.Add(new PageBreak());
             var page = pdf.GetPage(index);
             var lines = Lines(page);
@@ -209,6 +212,7 @@ public static class PdfOps
         var outputs = new List<string>();
         for (var index = 0; index < files.Count; index++)
         {
+            context.ThrowIfCancelled();
             context.Report($"Converting {index + 1} of {files.Count}");
             var file = files[index];
             var output = Output.PathFor(file, target.Ext());
@@ -224,6 +228,7 @@ public static class PdfOps
         var outputs = new List<string>();
         foreach (var file in files)
         {
+            context.ThrowIfCancelled();
             var output = Output.PathFor(file, "xlsx");
             await Task.Run(() =>
             {
@@ -231,6 +236,7 @@ public static class PdfOps
                 using var book = new XLWorkbook();
                 for (var index = 1; index <= pdf.NumberOfPages; index++)
                 {
+                    context.ThrowIfCancelled();
                     context.Report($"Page {index} of {pdf.NumberOfPages}");
                     var sheet = book.Worksheets.Add($"Page {index}");
                     var lines = Lines(pdf.GetPage(index));
@@ -310,6 +316,7 @@ public static class PdfOps
         var outputs = new List<string>();
         foreach (var file in files)
         {
+            context.ThrowIfCancelled();
             var folder = Output.Named($"{Path.GetFileNameWithoutExtension(file)} pages", file);
             await Task.Run(() =>
             {
@@ -334,6 +341,7 @@ public static class PdfOps
         var outputs = new List<string>();
         foreach (var file in files)
         {
+            context.ThrowIfCancelled();
             var output = Output.PathFor(file, "pdf", "clean");
             await Task.Run(() =>
             {
@@ -359,6 +367,7 @@ public static class PdfOps
         long before = 0, after = 0;
         foreach (var file in files)
         {
+            context.ThrowIfCancelled();
             var output = Output.PathFor(file, "pdf", "compressed");
             await Task.Run(() =>
             {

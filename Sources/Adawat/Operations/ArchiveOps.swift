@@ -81,6 +81,7 @@ enum ArchiveOps {
     static func extract(_ files: [URL], context: OperationContext) async throws -> [URL] {
         var outputs: [URL] = []
         for file in files {
+            try await context.checkpoint()
             context.report("Extracting \(file.lastPathComponent)")
             outputs.append(try await extractOne(file))
         }
@@ -143,6 +144,7 @@ enum ArchiveOps {
         var outputs: [URL] = []
         let fm = FileManager.default
         for file in files {
+            try await context.checkpoint()
             context.report("Converting \(file.lastPathComponent)")
             let staging = try extractToStaging(file)
             defer { try? fm.removeItem(at: staging) }

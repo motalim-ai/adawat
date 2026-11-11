@@ -16,17 +16,30 @@ public static class Runner
     public static void Run(string title, IReadOnlyList<string> files, OperationWork work, bool producesFiles = true) =>
         Run(new AdawatOperation("window", title, "", work) { ProducesFiles = producesFiles }, files);
 
+    /// <summary>The work in progress, each with its Cancel. Touched on the UI thread only.</summary>
+    private static readonly List<CancellationTokenSource> Running = [];
+
+    /// <summary>The toast's Cancel button: stops everything in progress, since the one toast speaks for all of it.</summary>
+    public static void CancelAll()
+    {
+        foreach (var source in Running) source.Cancel();
+    }
+
     public static async void Run(AdawatOperation operation, IReadOnlyList<string> files)
     {
         var hud = Hud.Shared;
-        hud.ShowMessage($"{operation.Title}…", Hud.Style.Working);
+        using var cancel = new CancellationTokenSource();
+        Running.Add(cancel);
+        // Actions (Share, Move, Copy…) are over at once or wait on a dialog of their own; only work that makes files offers Cancel.
+        hud.ShowMessage($"{operation.Title}…", Hud.Style.Working, operation.ProducesFiles ? CancelAll : null);
         var dispatcher = Application.Current.Dispatcher;
         var context = new OperationContext(
             text => dispatcher.BeginInvoke(() => hud.Update(text)),
-            fraction => dispatcher.BeginInvoke(() => hud.SetProgress(fraction)));
+            fraction => dispatcher.BeginInvoke(() => hud.SetProgress(fraction)),
+            cancel.Token);
         try
         {
-            var outputs = await Task.Run(() => operation.Run(files, context));
+            var outputs = await Task.Run(() => context.Run(operation.Run, files));
             var message = context.Message ?? outputs.Count switch
             {
                 0 => $"{operation.Title} done",
@@ -37,11 +50,19 @@ public static class Runner
             Sounds.Done();
             if (operation.ProducesFiles && outputs.Count > 0 && Settings.Current.ShowResultsInFloat) Floats.ShowResults(outputs);
         }
+        catch (OperationCanceledException) when (cancel.IsCancellationRequested)
+        {
+            hud.ShowMessage("Cancelled", Hud.Style.Cancelled);
+        }
         catch (Exception e)
         {
             Log.Write($"{operation.Id} failed: {e}");
             hud.ShowMessage(e is AdawatException ? e.Message : L10n.T("Something went wrong: ") + e.Message, Hud.Style.Failure);
             Sounds.Failed();
+        }
+        finally
+        {
+            Running.Remove(cancel);
         }
     }
 }

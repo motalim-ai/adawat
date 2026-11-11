@@ -209,6 +209,11 @@ public static class MediaOps
                 // Streams that look alike can still disagree in detail; fall through to re-encoding.
                 TryDelete(output);
             }
+            catch (OperationCanceledException)
+            {
+                TryDelete(output);
+                throw;
+            }
         }
 
         context.Report($"Encoding {files.Count} videos into one");

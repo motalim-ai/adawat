@@ -45,6 +45,7 @@ public static class ImageOps
         var outputs = new List<string>();
         for (var index = 0; index < files.Count; index++)
         {
+            context.ThrowIfCancelled();
             context.Report($"Resizing {index + 1} of {files.Count}");
             var file = files[index];
             var output = await Task.Run(() =>
@@ -64,6 +65,7 @@ public static class ImageOps
         var outputs = new List<string>();
         foreach (var file in files)
         {
+            context.ThrowIfCancelled();
             var output = Output.PathFor(file, Path.GetExtension(file).TrimStart('.'), "clean");
             await Task.Run(() =>
             {
@@ -90,6 +92,7 @@ public static class ImageOps
         var outputs = new List<string>();
         for (var index = 0; index < files.Count; index++)
         {
+            context.ThrowIfCancelled();
             context.Report($"Cropping {index + 1} of {files.Count}");
             var file = files[index];
             var output = Output.PathFor(file, EditedFormat(file).Ext, "cropped");
@@ -114,6 +117,7 @@ public static class ImageOps
         var outputs = new List<string>();
         foreach (var file in files)
         {
+            context.ThrowIfCancelled();
             double w, h;
             using (var upright = await ImageEngine.LoadAsync(file)) (w, h) = (upright.Width, upright.Height);
             var side = Math.Min(w, h);
@@ -128,6 +132,7 @@ public static class ImageOps
         var outputs = new List<string>();
         foreach (var file in files)
         {
+            context.ThrowIfCancelled();
             var output = Output.PathFor(file, Path.GetExtension(file).TrimStart('.'), "rotated");
             await Task.Run(() =>
             {
@@ -181,6 +186,7 @@ public static class ImageOps
         var all = new List<string>();
         for (var index = 0; index < files.Count; index++)
         {
+            context.ThrowIfCancelled();
             context.Report($"Reading text {index + 1} of {files.Count}");
             var file = files[index];
             string text;
@@ -211,6 +217,7 @@ public static class ImageOps
         var payloads = new List<string>();
         foreach (var file in files)
         {
+            context.ThrowIfCancelled();
             using var image = await ImageEngine.LoadAsync(file);
             payloads.AddRange(Recognition.Codes(image));
         }

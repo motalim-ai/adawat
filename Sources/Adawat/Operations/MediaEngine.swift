@@ -146,12 +146,18 @@ enum FFmpeg {
         let full = ["-y", "-hide_banner", "-nostdin", "-loglevel", "error", "-progress", "pipe:1", "-nostats"]
             + inputOptions + ["-i", input.path] + arguments + [output.path]
         do {
-            try await execute(ffmpeg, full, duration: duration, progress: progress)
-        } catch where softwareFallback(arguments) != nil {
-            DebugLog.write("hardware encoder failed, retrying in software: \(error.localizedDescription)")
-            let software = ["-y", "-hide_banner", "-nostdin", "-loglevel", "error", "-progress", "pipe:1", "-nostats"]
-                + inputOptions + ["-i", input.path] + softwareFallback(arguments)! + [output.path]
-            try await execute(ffmpeg, software, duration: duration, progress: progress)
+            do {
+                try await execute(ffmpeg, full, duration: duration, progress: progress)
+            } catch where !(error is CancellationError) && softwareFallback(arguments) != nil {
+                DebugLog.write("hardware encoder failed, retrying in software: \(error.localizedDescription)")
+                let software = ["-y", "-hide_banner", "-nostdin", "-loglevel", "error", "-progress", "pipe:1", "-nostats"]
+                    + inputOptions + ["-i", input.path] + softwareFallback(arguments)! + [output.path]
+                try await execute(ffmpeg, software, duration: duration, progress: progress)
+            }
+        } catch is CancellationError {
+            // A cancelled job leaves no half-written file behind.
+            try? FileManager.default.removeItem(at: output)
+            throw CancellationError()
         }
     }
 
@@ -161,14 +167,31 @@ enum FFmpeg {
         let ffmpeg = try ExternalTool.ffmpeg.require()
         let prefix = ["-y", "-hide_banner", "-nostdin", "-loglevel", "error", "-progress", "pipe:1", "-nostats"]
         do {
-            try await execute(ffmpeg, prefix + arguments, duration: duration, progress: progress)
-        } catch where softwareFallback(arguments) != nil {
-            DebugLog.write("hardware encoder failed, retrying in software: \(error.localizedDescription)")
-            try await execute(ffmpeg, prefix + softwareFallback(arguments)!, duration: duration, progress: progress)
+            do {
+                try await execute(ffmpeg, prefix + arguments, duration: duration, progress: progress)
+            } catch where !(error is CancellationError) && softwareFallback(arguments) != nil {
+                DebugLog.write("hardware encoder failed, retrying in software: \(error.localizedDescription)")
+                try await execute(ffmpeg, prefix + softwareFallback(arguments)!, duration: duration, progress: progress)
+            }
+        } catch is CancellationError {
+            // The output is the last argument; a cancelled job leaves no half-written file behind.
+            if let last = arguments.last, last.hasPrefix("/") { try? FileManager.default.removeItem(atPath: last) }
+            throw CancellationError()
         }
     }
 
+    /// Cancelling the task stops ffmpeg and throws `CancellationError`.
     private static func execute(_ ffmpeg: URL, _ arguments: [String], duration: Double,
+                                progress: @escaping @Sendable (Double) -> Void) async throws {
+        let handle = ProcessHandle()
+        try await withTaskCancellationHandler {
+            try await execute(ffmpeg, arguments, duration: duration, handle: handle, progress: progress)
+        } onCancel: {
+            handle.cancel()
+        }
+    }
+
+    private static func execute(_ ffmpeg: URL, _ arguments: [String], duration: Double, handle: ProcessHandle,
                                 progress: @escaping @Sendable (Double) -> Void) async throws {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             DispatchQueue.global(qos: .userInitiated).async {
@@ -187,6 +210,7 @@ enum FFmpeg {
                     continuation.resume(throwing: error)
                     return
                 }
+                handle.attach(process)
                 var buffer = ""
                 while case let data = out.fileHandleForReading.availableData, !data.isEmpty {
                     buffer += String(decoding: data, as: UTF8.self)
@@ -200,7 +224,9 @@ enum FFmpeg {
                 }
                 process.waitUntilExit()
                 err.fileHandleForReading.readabilityHandler = nil
-                if process.terminationStatus == 0 {
+                if handle.isCancelled {
+                    continuation.resume(throwing: CancellationError())
+                } else if process.terminationStatus == 0 {
                     continuation.resume()
                 } else {
                     let message = String(decoding: errors.value, as: UTF8.self)

@@ -6,7 +6,7 @@ namespace Adawat.Linux.Desktop;
 /// <summary>
 /// Two X11 window settings Avalonia has no property for. Override-redirect windows skip the window manager: they map at
 /// once, exactly where asked and above other windows, even while a drag holds the pointer, which GNOME otherwise defers.
-/// An empty input shape lets clicks pass through, for the toast.
+/// An empty input shape lets clicks pass through, for the toast; a one-rectangle shape takes them on its Cancel button only.
 /// </summary>
 public static class X11Window
 {
@@ -35,8 +35,25 @@ public static class X11Window
         XFlush(Display);
     }
 
+    /// <summary>Clicks land on <paramref name="window"/> only inside this rectangle, in its own pixels; the rest pass through.</summary>
+    public static void ClickOnly(Window window, int x, int y, int width, int height)
+    {
+        var id = Handle(window);
+        if (id == IntPtr.Zero || Display == IntPtr.Zero) return;
+        var rectangle = new XRectangle { x = (short)x, y = (short)y, width = (ushort)width, height = (ushort)height };
+        XShapeCombineRectangles(Display, id, ShapeInput, 0, 0, ref rectangle, 1, ShapeSet, 0);
+        XFlush(Display);
+    }
+
     private const ulong CWOverrideRedirect = 1 << 9;
     private const int ShapeInput = 2, ShapeSet = 0;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct XRectangle
+    {
+        public short x, y;
+        public ushort width, height;
+    }
 
     [StructLayout(LayoutKind.Sequential)]
     private struct XSetWindowAttributes
@@ -62,4 +79,5 @@ public static class X11Window
     [DllImport("libX11.so.6")] private static extern int XChangeWindowAttributes(IntPtr display, IntPtr window, ulong valueMask, ref XSetWindowAttributes attributes);
     [DllImport("libX11.so.6")] private static extern int XFlush(IntPtr display);
     [DllImport("libXext.so.6")] private static extern void XShapeCombineRectangles(IntPtr display, IntPtr window, int kind, int x, int y, IntPtr rectangles, int count, int operation, int ordering);
+    [DllImport("libXext.so.6")] private static extern void XShapeCombineRectangles(IntPtr display, IntPtr window, int kind, int x, int y, ref XRectangle rectangles, int count, int operation, int ordering);
 }

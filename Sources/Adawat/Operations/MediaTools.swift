@@ -80,6 +80,7 @@ extension MediaOps {
         let crop = "crop=w=trunc(iw*\(number(rect.width))/2)*2:h=trunc(ih*\(number(rect.height))/2)*2"
             + ":x=trunc(iw*\(number(rect.minX))):y=trunc(ih*\(number(rect.minY)))"
         for (index, file) in files.enumerated() {
+            try Task.checkCancellation()
             let info = await MediaProbe.info(file)
             let ext = videoOutputExtension(file)
             let out = Output.url(for: file, extension: ext, suffix: "cropped")
@@ -111,6 +112,7 @@ extension MediaOps {
             defer { try? FileManager.default.removeItem(at: staging) }
             var parts: [URL] = []
             for (order, segment) in segments.enumerated() {
+                try Task.checkCancellation()
                 context.report("Cutting clip \(order + 1) of \(segments.count)")
                 let part = staging.appendingPathComponent("part \(order).\(ext)")
                 try await cutSegment(file, start: segment.start, end: segment.end, to: part, info: info,
@@ -131,6 +133,7 @@ extension MediaOps {
         let folder = Output.url(named: "\(base) clips", near: file)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         for (order, segment) in segments.enumerated() {
+            try Task.checkCancellation()
             context.report("Saving clip \(order + 1) of \(segments.count)")
             let out = folder.appendingPathComponent(String(format: "%@ %02d.%@", base, order + 1, ext))
             try await cutSegment(file, start: segment.start, end: segment.end, to: out, info: info,
@@ -154,6 +157,7 @@ extension MediaOps {
         generator.requestedTimeToleranceAfter = .zero
         var outputs: [URL] = []
         for (index, time) in times.sorted().enumerated() {
+            try Task.checkCancellation()
             context.progress(Double(index) / Double(times.count))
             let name = String(format: "Frame %03d - %.3fs.png", index + 1, time)
             let out = folder?.appendingPathComponent(name) ?? Output.url(for: file, extension: "png", suffix: String(format: "%.3fs", time))

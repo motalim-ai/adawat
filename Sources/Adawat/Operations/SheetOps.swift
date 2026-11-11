@@ -283,6 +283,7 @@ enum SheetOps {
     static func convert(_ files: [URL], to target: Target, context: OperationContext) async throws -> [URL] {
         var outputs: [URL] = []
         for (index, file) in files.enumerated() {
+            try await context.checkpoint()
             context.report("Converting \(index + 1) of \(files.count)")
             let table = try await read(file)
             guard !table.isEmpty else { throw AdawatError.message("\(file.lastPathComponent) is empty.") }

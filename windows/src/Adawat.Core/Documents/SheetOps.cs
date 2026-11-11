@@ -23,6 +23,7 @@ public static class SheetOps
         var outputs = new List<string>();
         for (var index = 0; index < files.Count; index++)
         {
+            context.ThrowIfCancelled();
             context.Report($"Converting {index + 1} of {files.Count}");
             var file = files[index];
             var sheets = await Task.Run(() => Read(file));

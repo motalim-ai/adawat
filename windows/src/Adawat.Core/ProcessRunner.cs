@@ -37,10 +37,18 @@ public static class ProcessRunner
 
     public sealed record Result(int ExitCode, string Output, string Error);
 
+    /// <summary>The running operation's Cancel (see <see cref="OperationContext.Run"/>), used when a call passes no token.</summary>
+    public static readonly AsyncLocal<CancellationToken> Ambient = new();
+
+    /// <summary><paramref name="cancellation"/>, or the running operation's when the caller passed none.</summary>
+    public static CancellationToken Effective(CancellationToken cancellation) => cancellation.CanBeCanceled ? cancellation : Ambient.Value;
+
     /// <summary>Runs <paramref name="tool"/> and waits. Lines on standard output are passed to <paramref name="onLine"/>.</summary>
     public static async Task<Result> Run(string tool, IEnumerable<string> arguments, Action<string>? onLine = null,
                                          CancellationToken cancellation = default, string? input = null)
     {
+        cancellation = Effective(cancellation);
+        cancellation.ThrowIfCancellationRequested();
         var info = new ProcessStartInfo(tool)
         {
             UseShellExecute = false,

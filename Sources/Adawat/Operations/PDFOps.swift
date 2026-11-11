@@ -16,8 +16,10 @@ enum PDFOps {
     static func merge(_ files: [URL], context: OperationContext) async throws -> [URL] {
         let merged = PDFDocument()
         for file in files {
+            try await context.checkpoint()
             let document = try open(file)
             for index in 0..<document.pageCount {
+                try await context.checkpoint()
                 if let page = document.page(at: index) {
                     merged.insert(page, at: merged.pageCount)
                 }
@@ -33,11 +35,13 @@ enum PDFOps {
     static func split(_ files: [URL], context: OperationContext) async throws -> [URL] {
         var outputs: [URL] = []
         for file in files {
+            try await context.checkpoint()
             let document = try open(file)
             let base = file.deletingPathExtension().lastPathComponent
             let folder = Output.url(named: "\(base) pages", near: file)
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             for index in 0..<document.pageCount {
+                try await context.checkpoint()
                 context.report("Page \(index + 1) of \(document.pageCount)")
                 guard let page = document.page(at: index) else { continue }
                 let single = PDFDocument()
@@ -54,11 +58,13 @@ enum PDFOps {
     static func renderPages(_ files: [URL], format: ImageFormat, context: OperationContext) async throws -> [URL] {
         var outputs: [URL] = []
         for file in files {
+            try await context.checkpoint()
             let document = try open(file)
             let base = file.deletingPathExtension().lastPathComponent
             let folder: URL? = document.pageCount > 1 ? Output.url(named: "\(base) \(format.name)", near: file) : nil
             if let folder { try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true) }
             for index in 0..<document.pageCount {
+                try await context.checkpoint()
                 context.report("Rendering page \(index + 1) of \(document.pageCount)")
                 context.progress(Double(index) / Double(document.pageCount))
                 guard let page = document.page(at: index), let image = render(page, dpi: 300) else {
@@ -103,6 +109,7 @@ enum PDFOps {
         let document = try open(file)
         var pages: [String] = []
         for index in 0..<document.pageCount {
+            try await context.checkpoint()
             guard let page = document.page(at: index) else { continue }
             let selectable = (page.string ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
             if !selectable.isEmpty {
@@ -119,6 +126,7 @@ enum PDFOps {
     static func toText(_ files: [URL], context: OperationContext) async throws -> [URL] {
         var outputs: [URL] = []
         for file in files {
+            try await context.checkpoint()
             let text = try await self.text(of: file, context: context)
             let out = Output.url(for: file, extension: "txt")
             try text.write(to: out, atomically: true, encoding: .utf8)
@@ -131,9 +139,11 @@ enum PDFOps {
     static func toDocument(_ files: [URL], target: DocumentOps.Target, context: OperationContext) async throws -> [URL] {
         var outputs: [URL] = []
         for file in files {
+            try await context.checkpoint()
             let document = try open(file)
             let text = NSMutableAttributedString()
             for index in 0..<document.pageCount {
+                try await context.checkpoint()
                 if let page = document.page(at: index)?.attributedString { text.append(page) }
                 if index < document.pageCount - 1 { text.append(NSAttributedString(string: "\n\n")) }
             }
@@ -157,6 +167,7 @@ enum PDFOps {
         var before: Int64 = 0
         var after: Int64 = 0
         for file in files {
+            try await context.checkpoint()
             let document = try open(file)
             let out = Output.url(for: file, extension: "pdf", suffix: "compressed")
             guard document.write(to: out, withOptions: [PDFDocumentWriteOption(rawValue: "QuartzFilter"): filter]) else {
@@ -181,6 +192,7 @@ enum PDFOps {
     static func stripMetadata(_ files: [URL], context: OperationContext) async throws -> [URL] {
         var outputs: [URL] = []
         for file in files {
+            try await context.checkpoint()
             let document = try open(file)
             document.documentAttributes = [:]
             let out = Output.url(for: file, extension: "pdf", suffix: "clean")

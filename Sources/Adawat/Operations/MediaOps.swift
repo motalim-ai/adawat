@@ -110,6 +110,7 @@ enum MediaOps {
     static func convert(_ files: [URL], to format: MediaFormat, context: OperationContext) async throws -> [URL] {
         var outputs: [URL] = []
         for (index, file) in files.enumerated() {
+            try Task.checkCancellation()
             context.report("Converting \(index + 1) of \(files.count) to \(format.name)")
             let info = await MediaProbe.info(file)
             let out = Output.url(for: file, extension: format.ext)
@@ -152,6 +153,7 @@ enum MediaOps {
                                    arguments: [String]) async throws -> [URL] {
         var outputs: [URL] = []
         for (index, file) in files.enumerated() {
+            try Task.checkCancellation()
             let info = await MediaProbe.info(file)
             let out = Output.url(for: file, extension: file.pathExtension, suffix: suffix)
             try await encode(file, to: out, arguments: arguments, info: info,
@@ -165,6 +167,7 @@ enum MediaOps {
     static func rotate(_ files: [URL], context: OperationContext) async throws -> [URL] {
         var outputs: [URL] = []
         for file in files {
+            try Task.checkCancellation()
             let out = Output.url(for: file, extension: file.pathExtension, suffix: "rotated")
             if let type = passthroughTypes[file.pathExtension.lowercased()] {
                 try await rotateWithAVFoundation(file, to: out, type: type)
@@ -378,6 +381,7 @@ enum MediaOps {
     static func normalize(_ files: [URL], context: OperationContext) async throws -> [URL] {
         var outputs: [URL] = []
         for (index, file) in files.enumerated() {
+            try Task.checkCancellation()
             context.report("Measuring loudness \(index + 1) of \(files.count)")
             let info = await MediaProbe.info(file)
             guard info.hasAudio else { throw AdawatError.message("\(file.lastPathComponent) has no audio track") }
@@ -421,6 +425,7 @@ enum MediaOps {
     static func toMono(_ files: [URL], context: OperationContext) async throws -> [URL] {
         var outputs: [URL] = []
         for (index, file) in files.enumerated() {
+            try Task.checkCancellation()
             let info = await MediaProbe.info(file)
             guard info.hasAudio else { throw AdawatError.message("\(file.lastPathComponent) has no audio track") }
             var args = ["-map", "0:v?", "-map", "0:a", "-map_metadata", "0", "-ac", "1"]
@@ -440,6 +445,7 @@ enum MediaOps {
         let filter = "\(edge),areverse,\(edge),areverse"
         var outputs: [URL] = []
         for (index, file) in files.enumerated() {
+            try Task.checkCancellation()
             let info = await MediaProbe.info(file)
             let out = Output.url(for: file, extension: file.pathExtension, suffix: "trimmed")
             try await encode(file, to: out,
@@ -470,6 +476,7 @@ enum MediaOps {
     static func snapshot(_ files: [URL], context: OperationContext) async throws -> [URL] {
         var outputs: [URL] = []
         for file in files {
+            try Task.checkCancellation()
             let info = await MediaProbe.info(file)
             let time = info.duration / 2
             let out = Output.url(for: file, extension: "png", suffix: "frame")
