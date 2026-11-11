@@ -51,6 +51,13 @@ final class OperationContext {
         }
     }
 
+    /// Call between files or pages. Stops here if the user cancelled, after giving the screen a turn: much of the
+    /// work holds the main thread, and this is when the toast redraws and its Cancel button can answer.
+    func checkpoint() async throws {
+        await Task.yield()
+        try Task.checkCancellation()
+    }
+
     /// A message shown in the finish toast instead of the default one.
     func finish(with text: String) {
         message = text
@@ -69,11 +76,23 @@ enum AdawatError: LocalizedError {
 
 @MainActor
 enum OperationRunner {
+    /// The work in progress.
+    private static var running: [UUID: Task<Void, Never>] = [:]
+
+    /// The toast's Cancel button: stops everything in progress, since the one toast speaks for all of it.
+    static func cancelAll() {
+        running.values.forEach { $0.cancel() }
+    }
+
     static func run(_ operation: AdawatOperation, on files: [URL]) {
         let context = OperationContext()
-        HUDController.shared.show(L10n.t("\(operation.title)…"), style: .working)
+        // Actions (AirDrop, Move, Copy…) are over at once or wait on a panel of their own; only work that makes files offers Cancel.
+        let cancel: (() -> Void)? = operation.producesFiles ? { cancelAll() } : nil
+        HUDController.shared.show(L10n.t("\(operation.title)…"), style: .working, cancel: cancel)
 
-        Task { @MainActor in
+        let id = UUID()
+        running[id] = Task<Void, Never> { @MainActor in
+            defer { running[id] = nil }
             do {
                 let outputs = try await operation.run(files, context)
                 let text = context.message ?? doneMessage(operation, outputs: outputs)
@@ -83,8 +102,13 @@ enum OperationRunner {
                     FloatManager.shared.showResults(outputs)
                 }
             } catch {
-                HUDController.shared.show(error.localizedDescription, style: .failure)
-                Feedback.failure()
+                // A cancelled job can fail in its own words, such as ffmpeg reporting that it was stopped.
+                if Task.isCancelled {
+                    HUDController.shared.show("Cancelled", style: .cancelled)
+                } else {
+                    HUDController.shared.show(error.localizedDescription, style: .failure)
+                    Feedback.failure()
+                }
             }
         }
     }

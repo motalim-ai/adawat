@@ -236,11 +236,20 @@ public static class FFmpeg
         var ffmpeg = ProcessRunner.Require("ffmpeg");
         var info = new System.Diagnostics.ProcessStartInfo(ffmpeg) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true };
         foreach (var argument in (string[])["-hide_banner", "-nostdin", "-loglevel", "error", .. arguments]) info.ArgumentList.Add(argument);
+        cancellation = ProcessRunner.Effective(cancellation);
         using var process = System.Diagnostics.Process.Start(info)!;
         _ = process.StandardError.ReadToEndAsync();
         using var memory = new MemoryStream();
-        await process.StandardOutput.BaseStream.CopyToAsync(memory, cancellation);
-        await process.WaitForExitAsync(cancellation);
+        try
+        {
+            await process.StandardOutput.BaseStream.CopyToAsync(memory, cancellation);
+            await process.WaitForExitAsync(cancellation);
+        }
+        catch (OperationCanceledException)
+        {
+            try { process.Kill(entireProcessTree: true); } catch (InvalidOperationException) { }
+            throw;
+        }
         return memory.ToArray();
     }
 

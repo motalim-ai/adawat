@@ -9,10 +9,11 @@ using Adawat.Core;
 
 namespace Adawat.App;
 
-/// <summary>A small toast at the top of the screen that says what Adawat is doing: working (with progress), done, or failed.</summary>
+/// <summary>A small toast at the top of the screen that says what Adawat is doing: working (with progress), done, cancelled
+/// or failed. Clicks pass through it, except while it offers Cancel for the work in progress.</summary>
 public sealed class Hud : Window
 {
-    public enum Style { Working, Success, Failure }
+    public enum Style { Working, Success, Failure, Cancelled }
 
     public static Hud Shared { get; } = new();
 
@@ -21,6 +22,9 @@ public sealed class Hud : Window
     private readonly TextBlock _percent = new() { FontFamily = Theme.Font, FontSize = 11, FontWeight = FontWeights.SemiBold, Foreground = Theme.Muted, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
     private readonly ProgressBar _bar = new() { Height = 4, Minimum = 0, Maximum = 1, Foreground = Theme.Accent, Background = Theme.ButtonFill, BorderThickness = new Thickness(0), Margin = new Thickness(0, 6, 0, 0), Visibility = Visibility.Collapsed };
     private readonly DispatcherTimer _hideTimer = new() { Interval = TimeSpan.FromSeconds(2.6) };
+    private readonly Button _cancel;
+    private Action? _onCancel;
+    private IntPtr _handle;
     private Style _style;
 
     private Hud()
@@ -39,6 +43,10 @@ public sealed class Hud : Window
         row.Children.Add(new Border { Width = 9 });
         row.Children.Add(_text);
         row.Children.Add(_percent);
+        _cancel = UI.IconButton("\uE711", CancelClicked, "Cancel");
+        _cancel.Margin = new Thickness(10, -5, -6, -5);
+        _cancel.Visibility = Visibility.Collapsed;
+        row.Children.Add(_cancel);
         var column = new StackPanel();
         column.Children.Add(row);
         column.Children.Add(_bar);
@@ -49,16 +57,22 @@ public sealed class Hud : Window
             Effect = new DropShadowEffect { BlurRadius = 18, ShadowDepth = 4, Direction = 270, Opacity = 0.16 }, Child = column,
         };
         _hideTimer.Tick += (_, _) => { _hideTimer.Stop(); Fade(); };
-        SourceInitialized += (_, _) => Native.MakeToolWindow(new WindowInteropHelper(this).Handle, clickThrough: true);
+        SourceInitialized += (_, _) =>
+        {
+            _handle = new WindowInteropHelper(this).Handle;
+            Native.MakeToolWindow(_handle, clickThrough: _onCancel == null);
+        };
         SizeChanged += (_, _) => Position();
     }
 
-    public void ShowMessage(string text, Style style)
+    /// <summary><paramref name="cancel"/>, for work in progress, adds a Cancel button that calls it.</summary>
+    public void ShowMessage(string text, Style style, Action? cancel = null)
     {
         _style = style;
         _text.Text = L10n.T(text);
-        _icon.Text = style switch { Style.Working => "", Style.Success => "", _ => "" };
-        _icon.Foreground = style == Style.Failure ? new SolidColorBrush(Color.FromRgb(0xD8, 0x3B, 0x3B)) : Theme.Accent;
+        _icon.Text = style switch { Style.Working => "", Style.Success => "", Style.Cancelled => "\uE711", _ => "" };
+        _icon.Foreground = style switch { Style.Failure => new SolidColorBrush(Color.FromRgb(0xD8, 0x3B, 0x3B)), Style.Cancelled => Theme.Muted, _ => Theme.Accent };
+        OfferCancel(style == Style.Working ? cancel : null);
         _bar.Visibility = Visibility.Collapsed;
         _percent.Text = "";
         if (style == Style.Working) _hideTimer.Stop(); else { _hideTimer.Interval = TimeSpan.FromSeconds(style == Style.Failure ? 4 : 2.6); _hideTimer.Start(); }
@@ -80,6 +94,21 @@ public sealed class Hud : Window
         _bar.Visibility = Visibility.Visible;
         _bar.Value = fraction;
         _percent.Text = $"{(int)Math.Round(fraction * 100)}%";
+    }
+
+    /// <summary>Shows or hides the Cancel button. The toast takes clicks only while the button is there.</summary>
+    private void OfferCancel(Action? cancel)
+    {
+        _onCancel = cancel;
+        _cancel.Visibility = cancel != null ? Visibility.Visible : Visibility.Collapsed;
+        if (_handle != IntPtr.Zero) Native.MakeToolWindow(_handle, clickThrough: cancel == null);
+    }
+
+    private void CancelClicked()
+    {
+        var cancel = _onCancel;
+        OfferCancel(null);
+        cancel?.Invoke();
     }
 
     private void Fade()

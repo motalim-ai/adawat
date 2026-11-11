@@ -12,6 +12,7 @@ enum SlideOps {
     static func convert(_ files: [URL], to target: Target, context: OperationContext) async throws -> [URL] {
         var outputs: [URL] = []
         for (index, file) in files.enumerated() {
+            try await context.checkpoint()
             context.report("Converting \(index + 1) of \(files.count) with Keynote")
             let base = file.deletingPathExtension().lastPathComponent
             switch target {
@@ -43,6 +44,7 @@ enum SlideOps {
     static func pdfToPPTX(_ files: [URL], context: OperationContext) async throws -> [URL] {
         var outputs: [URL] = []
         for file in files {
+            try await context.checkpoint()
             let document = try PDFOps.open(file)
             let out = Output.url(for: file, extension: "pptx")
             try await writeDeck(document, to: out, context: context)
@@ -68,6 +70,7 @@ enum SlideOps {
 
         var slideIDs = "", presentationRels = "", contentSlides = ""
         for index in 0..<document.pageCount {
+            try await context.checkpoint()
             context.report("Building slide \(index + 1) of \(document.pageCount)")
             context.progress(Double(index) / Double(document.pageCount))
             guard let page = document.page(at: index), let image = PDFOps.render(page, dpi: 144) else { continue }

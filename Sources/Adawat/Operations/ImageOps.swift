@@ -50,6 +50,7 @@ enum ImageOps {
     static func convert(_ files: [URL], to format: ImageFormat, context: OperationContext) async throws -> [URL] {
         var outputs: [URL] = []
         for (index, url) in files.enumerated() {
+            try await context.checkpoint()
             context.report("Converting \(index + 1) of \(files.count)")
             let out = Output.url(for: url, extension: format.ext)
             try await ImageEngine.save(try ImageFile(url), as: format, to: out, quality: 0.9)
@@ -68,6 +69,7 @@ enum ImageOps {
         let maxPixels = AppSettings.shared.resizeMaxPixels
         var outputs: [URL] = []
         for (index, url) in files.enumerated() {
+            try await context.checkpoint()
             context.report("Resizing \(index + 1) of \(files.count)")
             let file = try ImageFile(url)
             let size = file.uprightSize
@@ -85,6 +87,7 @@ enum ImageOps {
     static func removeMetadata(_ files: [URL], context: OperationContext) async throws -> [URL] {
         var outputs: [URL] = []
         for url in files {
+            try await context.checkpoint()
             let out = Output.url(for: url, extension: url.pathExtension, suffix: "clean")
             try await ImageEngine.stripMetadata(try ImageFile(url), to: out)
             outputs.append(out)
@@ -97,6 +100,7 @@ enum ImageOps {
     static func crop(_ files: [URL], rect: CGRect, context: OperationContext) async throws -> [URL] {
         var outputs: [URL] = []
         for (index, url) in files.enumerated() {
+            try await context.checkpoint()
             context.report("Cropping \(index + 1) of \(files.count)")
             let file = try ImageFile(url)
             var format = ImageFormat.of(url) ?? .png
@@ -112,6 +116,7 @@ enum ImageOps {
     static func squareCrop(_ files: [URL], context: OperationContext) async throws -> [URL] {
         var outputs: [URL] = []
         for url in files {
+            try await context.checkpoint()
             let size = try ImageFile(url).uprightSize
             let w = CGFloat(size.width), h = CGFloat(size.height), side = min(w, h)
             let rect = CGRect(x: (w - side) / 2 / w, y: (h - side) / 2 / h, width: side / w, height: side / h)
@@ -123,6 +128,7 @@ enum ImageOps {
     static func frame(_ files: [URL], options: FrameOptions, context: OperationContext) async throws -> [URL] {
         var outputs: [URL] = []
         for url in files {
+            try await context.checkpoint()
             let source = try ImageFile(url)
             let image = try FrameRenderer.render(try source.upright(), options: options)
             let format = ImageEngine.editedFormat(for: url)
@@ -146,6 +152,7 @@ enum ImageOps {
     static func rotate(_ files: [URL], context: OperationContext) async throws -> [URL] {
         var outputs: [URL] = []
         for url in files {
+            try await context.checkpoint()
             let out = Output.url(for: url, extension: url.pathExtension, suffix: "rotated")
             try await ImageEngine.rotateClockwise(try ImageFile(url), to: out)
             outputs.append(out)
@@ -213,6 +220,7 @@ enum ImageOps {
         var outputs: [URL] = []
         var all: [String] = []
         for (index, file) in files.enumerated() {
+            try await context.checkpoint()
             context.report("Reading text \(index + 1) of \(files.count)")
             var text: String
             if FileKind(url: file) == .pdf {
@@ -236,6 +244,7 @@ enum ImageOps {
     static func readQRCodes(_ files: [URL], context: OperationContext) async throws -> [URL] {
         var payloads: [String] = []
         for file in files {
+            try await context.checkpoint()
             payloads += try await readQRCodes(in: loadImage(file))
         }
         guard !payloads.isEmpty else { throw AdawatError.message("No QR codes found") }

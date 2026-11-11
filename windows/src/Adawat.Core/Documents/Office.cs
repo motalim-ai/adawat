@@ -140,6 +140,7 @@ public static class SlideOps
         var outputs = new List<string>();
         for (var index = 0; index < files.Count; index++)
         {
+            context.ThrowIfCancelled();
             context.Report($"Converting {index + 1} of {files.Count}");
             var file = files[index];
             switch (target)
@@ -190,6 +191,7 @@ public static class SlideOps
         var outputs = new List<string>();
         foreach (var file in files)
         {
+            context.ThrowIfCancelled();
             var output = Output.PathFor(file, "pptx");
             await Task.Run(() =>
             {

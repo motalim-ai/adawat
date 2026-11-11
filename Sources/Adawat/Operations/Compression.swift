@@ -80,6 +80,7 @@ enum Compression {
         var after: Int64 = 0
         var skipped = 0
         for (index, url) in files.enumerated() {
+            try await context.checkpoint()
             context.report("Compressing \(index + 1) of \(files.count)")
             context.progress(Double(index) / Double(files.count))
             let file = try ImageFile(url)
@@ -159,6 +160,7 @@ enum Compression {
         var before: Int64 = 0
         var after: Int64 = 0
         for (index, file) in files.enumerated() {
+            try await context.checkpoint()
             context.report("Compressing \(index + 1) of \(files.count)")
             let info = await MediaProbe.info(file)
             guard info.hasVideo, info.duration > 0 else { throw AdawatError.message("\(file.lastPathComponent) has no video track") }
@@ -217,6 +219,7 @@ enum Compression {
         var before: Int64 = 0
         var after: Int64 = 0
         for (index, file) in files.enumerated() {
+            try await context.checkpoint()
             context.report("Compressing \(index + 1) of \(files.count)")
             let info = await MediaProbe.info(file)
             guard info.hasAudio, info.duration > 0 else { throw AdawatError.message("\(file.lastPathComponent) has no audio track") }

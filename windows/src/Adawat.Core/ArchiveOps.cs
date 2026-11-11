@@ -22,48 +22,58 @@ public static class ArchiveOps
         var name = files.Count == 1 ? Path.GetFileName(files[0].TrimEnd('\\', '/')) : "Archive";
         var output = format == "gz" ? Output.Unique(Path.Combine(Output.Directory(files[0]), Path.GetFileName(files[0]) + ".gz"))
                                     : Output.Named($"{name}.{(format == "tgz" ? "tar.gz" : format)}", files[0]);
-        await Task.Run(() =>
+        try
         {
-            switch (format)
+            await Task.Run(() =>
             {
-                case "zip":
-                    using (var zip = ZipFile.Open(output, ZipArchiveMode.Create))
-                        foreach (var item in files) AddToZip(zip, item, Path.GetFileName(item.TrimEnd('\\', '/')));
-                    break;
-                case "tar":
-                    using (var stream = File.Create(output)) WriteTar(stream, files);
-                    break;
-                case "tgz":
-                    using (var stream = File.Create(output))
-                    using (var gzip = new GZipStream(stream, CompressionLevel.Optimal)) WriteTar(gzip, files);
-                    break;
-                case "gz":
-                    using (var input = File.OpenRead(files[0]))
-                    using (var stream = File.Create(output))
-                    using (var gzip = new GZipStream(stream, CompressionLevel.Optimal)) input.CopyTo(gzip);
-                    break;
-            }
-        });
+                switch (format)
+                {
+                    case "zip":
+                        using (var zip = ZipFile.Open(output, ZipArchiveMode.Create))
+                            foreach (var item in files) AddToZip(zip, item, Path.GetFileName(item.TrimEnd('\\', '/')), context);
+                        break;
+                    case "tar":
+                        using (var stream = File.Create(output)) WriteTar(stream, files, context);
+                        break;
+                    case "tgz":
+                        using (var stream = File.Create(output))
+                        using (var gzip = new GZipStream(stream, CompressionLevel.Optimal)) WriteTar(gzip, files, context);
+                        break;
+                    case "gz":
+                        using (var input = File.OpenRead(files[0]))
+                        using (var stream = File.Create(output))
+                        using (var gzip = new GZipStream(stream, CompressionLevel.Optimal)) input.CopyToAsync(gzip, context.Cancellation).GetAwaiter().GetResult();
+                        break;
+                }
+            });
+        }
+        catch (OperationCanceledException)
+        {
+            File.Delete(output);
+            throw;
+        }
         return [output];
     }
 
-    private static void AddToZip(ZipArchive zip, string path, string entryName)
+    private static void AddToZip(ZipArchive zip, string path, string entryName, OperationContext context)
     {
+        context.ThrowIfCancelled();
         if (Directory.Exists(path))
         {
             var entries = Directory.EnumerateFileSystemEntries(path).ToList();
             if (entries.Count == 0) zip.CreateEntry(entryName + "/");
-            foreach (var child in entries) AddToZip(zip, child, entryName + "/" + Path.GetFileName(child));
+            foreach (var child in entries) AddToZip(zip, child, entryName + "/" + Path.GetFileName(child), context);
             return;
         }
         zip.CreateEntryFromFile(path, entryName, CompressionLevel.Optimal);
     }
 
-    private static void WriteTar(System.IO.Stream stream, IReadOnlyList<string> files)
+    private static void WriteTar(System.IO.Stream stream, IReadOnlyList<string> files, OperationContext context)
     {
         using var tar = new TarWriter(stream, TarEntryFormat.Pax, leaveOpen: true);
         void Add(string path, string name)
         {
+            context.ThrowIfCancelled();
             if (Directory.Exists(path))
             {
                 tar.WriteEntry(new PaxTarEntry(TarEntryType.Directory, name + "/"));
@@ -86,7 +96,15 @@ public static class ArchiveOps
             foreach (var suffix in new[] { ".tar.gz", ".tgz", ".tar.bz2", ".tar.xz", ".zip", ".rar", ".7z", ".tar", ".gz", ".bz2", ".xz", ".iso", ".cab" })
                 if (name.EndsWith(suffix, StringComparison.OrdinalIgnoreCase)) { name = name[..^suffix.Length]; break; }
             var folder = Output.Named(name, file);
-            await Task.Run(() => ExtractTo(file, folder, context));
+            try
+            {
+                await Task.Run(() => ExtractTo(file, folder, context));
+            }
+            catch (OperationCanceledException)
+            {
+                Directory.Delete(folder, true);
+                throw;
+            }
             // An archive holding a single folder gives that folder, not a folder inside a folder.
             var entries = Directory.EnumerateFileSystemEntries(folder).ToList();
             if (entries.Count == 1 && Directory.Exists(entries[0]))
@@ -112,7 +130,7 @@ public static class ArchiveOps
             using var input = File.OpenRead(file);
             using var gzip = new GZipStream(input, CompressionMode.Decompress);
             using var output = File.Create(Path.Combine(folder, Path.GetFileNameWithoutExtension(file)));
-            gzip.CopyTo(output);
+            gzip.CopyToAsync(output, context.Cancellation).GetAwaiter().GetResult();
             return;
         }
         try
@@ -121,7 +139,11 @@ public static class ArchiveOps
             if (archive.IsSolid || archive.Type == ArchiveType.SevenZip || ext is "tgz")
             {
                 using var reader = archive.ExtractAllEntries();
-                reader.WriteAllToDirectory(folder, new ExtractionOptions { ExtractFullPath = true, Overwrite = true });
+                while (reader.MoveToNextEntry())
+                {
+                    context.ThrowIfCancelled();
+                    if (!reader.Entry.IsDirectory) reader.WriteEntryToDirectory(folder, new ExtractionOptions { ExtractFullPath = true, Overwrite = true });
+                }
             }
             else
             {
@@ -154,22 +176,30 @@ public static class ArchiveOps
             var name = Path.GetFileNameWithoutExtension(file);
             if (name.EndsWith(".tar", StringComparison.OrdinalIgnoreCase)) name = name[..^4];
             var output = Output.PathFor(file, format == "tgz" ? "tar.gz" : format);
-            await Task.Run(() =>
+            try
             {
-                switch (format)
+                await Task.Run(() =>
                 {
-                    case "zip":
-                        using (var zip = ZipFile.Open(output, ZipArchiveMode.Create)) foreach (var item in items) AddToZip(zip, item, Path.GetFileName(item));
-                        break;
-                    case "tar":
-                        using (var stream = File.Create(output)) WriteTar(stream, items);
-                        break;
-                    default:
-                        using (var stream = File.Create(output))
-                        using (var gzip = new GZipStream(stream, CompressionLevel.Optimal)) WriteTar(gzip, items);
-                        break;
-                }
-            });
+                    switch (format)
+                    {
+                        case "zip":
+                            using (var zip = ZipFile.Open(output, ZipArchiveMode.Create)) foreach (var item in items) AddToZip(zip, item, Path.GetFileName(item), context);
+                            break;
+                        case "tar":
+                            using (var stream = File.Create(output)) WriteTar(stream, items, context);
+                            break;
+                        default:
+                            using (var stream = File.Create(output))
+                            using (var gzip = new GZipStream(stream, CompressionLevel.Optimal)) WriteTar(gzip, items, context);
+                            break;
+                    }
+                });
+            }
+            catch (OperationCanceledException)
+            {
+                File.Delete(output);
+                throw;
+            }
             outputs.Add(output);
         }
         return outputs;

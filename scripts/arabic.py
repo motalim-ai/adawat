@@ -12,6 +12,7 @@ STATIC = {
     "Convert": "تحويل", "Tools": "أدوات", "Actions": "إجراءات", "Convert wheel": "عجلة التحويل",
     "Tools wheel": "عجلة الأدوات", "Actions wheel": "عجلة الإجراءات", "NO OPTIONS": "لا خيارات",
     "Apply": "تطبيق", "Back": "رجوع", "Continue": "متابعة", "Close": "إغلاق", "Reset": "إعادة ضبط",
+    "Cancel": "إلغاء", "Cancelled": "أُلغي",
     "Save": "حفظ", "Set": "تعيين", "Stop": "إيقاف", "Play": "تشغيل", "Open": "فتح", "Preview": "معاينة",
     "Original": "الأصل", "Edited": "معدّل", "Restore Defaults": "استعادة الافتراضي", "Get Started": "ابدأ",
     "Untitled": "بدون عنوان", "Adawat": "أدوات",
@@ -306,7 +307,7 @@ LINUX_STATIC = {
     "On this desktop the wheel opens from the file manager: right-click files and choose Open with Adawat.":
         "على سطح المكتب هذا تظهر العجلة من مدير الملفات: انقر الملفات بالزر الأيمن واختر «فتح بأدوات».",
     "Open with Adawat": "فتح بأدوات", "Show in Files": "إظهار في الملفات", "Float": "Float", "Search": "بحث",
-    "Choose an image": "اختر صورة", "Cancel": "إلغاء", "Copy": "نسخ", "Email": "بريد إلكتروني", "Attach to a new message": "إرفاق برسالة جديدة",
+    "Choose an image": "اختر صورة", "Copy": "نسخ", "Email": "بريد إلكتروني", "Attach to a new message": "إرفاق برسالة جديدة",
     "Bluetooth": "Bluetooth", "Send to a nearby device": "إرسال إلى جهاز قريب", "KDE Connect": "KDE Connect",
     "Send to your phone": "إرسال إلى هاتفك", "Paste the files in any app": "ألصق الملفات في أي تطبيق",
     "No phone is connected to KDE Connect": "لا يوجد هاتف متصل بـ KDE Connect", "Sent to your phone": "أُرسل إلى هاتفك",

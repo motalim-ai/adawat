@@ -52,6 +52,7 @@ enum DocumentOps {
     static func convert(_ files: [URL], to target: Target, context: OperationContext) async throws -> [URL] {
         var outputs: [URL] = []
         for (index, file) in files.enumerated() {
+            try await context.checkpoint()
             context.report("Converting \(index + 1) of \(files.count)")
             let out = Output.url(for: file, extension: target.rawValue)
             try await write(try await load(file), as: target, to: out, title: file.deletingPathExtension().lastPathComponent)

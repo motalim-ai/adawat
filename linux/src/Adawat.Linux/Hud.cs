@@ -8,10 +8,11 @@ using Adawat.Linux.Desktop;
 
 namespace Adawat.Linux;
 
-/// <summary>A small toast at the top of the screen that says what Adawat is doing: working (with progress), done, or failed.</summary>
+/// <summary>A small toast at the top of the screen that says what Adawat is doing: working (with progress), done, cancelled
+/// or failed. Clicks pass through it, except on the Cancel button it offers for the work in progress.</summary>
 public sealed class Hud : Window
 {
-    public enum Style { Working, Success, Failure }
+    public enum Style { Working, Success, Failure, Cancelled }
 
     private static Hud? _shared;
     public static Hud Shared => _shared ??= new Hud();
@@ -21,6 +22,9 @@ public sealed class Hud : Window
     private readonly TextBlock _percent = new() { FontFamily = Look.Font, FontSize = 11, FontWeight = FontWeight.SemiBold, Foreground = Look.Muted, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
     private readonly ProgressBar _bar = new() { Height = 4, MinHeight = 4, Minimum = 0, Maximum = 1, Foreground = Look.Accent, Background = Look.ButtonFill, Margin = new Thickness(0, 6, 0, 0), IsVisible = false };
     private readonly DispatcherTimer _hideTimer = new() { Interval = TimeSpan.FromSeconds(2.6) };
+    private readonly SoftButton _cancel;
+    private Action? _onCancel;
+    private PixelRect? _clickable;
     private Style _style;
 
     private Hud()
@@ -34,12 +38,15 @@ public sealed class Hud : Window
         CanResize = false;
         SizeToContent = SizeToContent.WidthAndHeight;
         FlowDirection = Look.Direction;
-        IsHitTestVisible = false;
         Title = "Adawat";
         var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 9 };
         row.Children.Add(_icon);
         row.Children.Add(_text);
         row.Children.Add(_percent);
+        _cancel = UI.IconButton("\uE711", CancelClicked, "Cancel");
+        _cancel.Margin = new Thickness(1, -5, -6, -5);
+        _cancel.IsVisible = false;
+        row.Children.Add(_cancel);
         var column = new StackPanel();
         column.Children.Add(row);
         column.Children.Add(_bar);
@@ -52,16 +59,20 @@ public sealed class Hud : Window
         Transitions = [new Avalonia.Animation.DoubleTransition { Property = OpacityProperty, Duration = TimeSpan.FromMilliseconds(220) }];
         _hideTimer.Tick += (_, _) => { _hideTimer.Stop(); Fade(); };
         Desktop.X11Window.SkipWindowManager(this);
-        Opened += (_, _) => Desktop.X11Window.ClickThrough(this);
+        Opened += (_, _) => { _clickable = null; ShapeClicks(); };
+        LayoutUpdated += (_, _) => ShapeClicks();
         SizeChanged += (_, _) => Place();
     }
 
-    public void ShowMessage(string text, Style style)
+    /// <summary><paramref name="cancel"/>, for work in progress, adds a Cancel button that calls it.</summary>
+    public void ShowMessage(string text, Style style, Action? cancel = null)
     {
         _style = style;
         _text.Text = L10n.T(text);
-        _icon.Text = Icons.Glyph(style switch { Style.Working => "", Style.Success => "", _ => "" });
-        _icon.Foreground = style == Style.Failure ? Look.Failure : Look.Accent;
+        _icon.Text = Icons.Glyph(style switch { Style.Working => "", Style.Success => "", Style.Cancelled => "\uE711", _ => "" });
+        _icon.Foreground = style switch { Style.Failure => Look.Failure, Style.Cancelled => Look.Muted, _ => Look.Accent };
+        _onCancel = style == Style.Working ? cancel : null;
+        _cancel.IsVisible = _onCancel != null;
         _bar.IsVisible = false;
         _percent.Text = "";
         if (style == Style.Working) _hideTimer.Stop(); else { _hideTimer.Interval = TimeSpan.FromSeconds(style == Style.Failure ? 4 : 2.6); _hideTimer.Start(); }
@@ -82,6 +93,31 @@ public sealed class Hud : Window
         _bar.IsVisible = true;
         _bar.Value = fraction;
         _percent.Text = $"{(int)Math.Round(fraction * 100)}%";
+    }
+
+    private void CancelClicked()
+    {
+        var cancel = _onCancel;
+        _onCancel = null;
+        _cancel.IsVisible = false;
+        cancel?.Invoke();
+    }
+
+    /// <summary>Keeps the X11 input shape on the Cancel button, wherever the layout puts it, and empty without one.</summary>
+    private void ShapeClicks()
+    {
+        var area = default(PixelRect);
+        if (_cancel.IsVisible)
+        {
+            // Through the screen, so the rectangle is right in Arabic too, where the row is mirrored.
+            var a = _cancel.PointToScreen(default);
+            var b = _cancel.PointToScreen(new Point(_cancel.Bounds.Width, _cancel.Bounds.Height));
+            area = new PixelRect(Math.Min(a.X, b.X) - Position.X, Math.Min(a.Y, b.Y) - Position.Y, Math.Abs(b.X - a.X), Math.Abs(b.Y - a.Y));
+        }
+        if (area == _clickable) return;
+        _clickable = area;
+        if (area.Width > 0 && area.Height > 0) Desktop.X11Window.ClickOnly(this, area.X, area.Y, area.Width, area.Height);
+        else Desktop.X11Window.ClickThrough(this);
     }
 
     private void Fade()
