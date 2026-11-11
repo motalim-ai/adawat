@@ -247,7 +247,7 @@ public static class FFmpeg
         }
         catch (OperationCanceledException)
         {
-            try { process.Kill(entireProcessTree: true); } catch (InvalidOperationException) { }
+            ProcessRunner.Stop(process);
             throw;
         }
         return memory.ToArray();

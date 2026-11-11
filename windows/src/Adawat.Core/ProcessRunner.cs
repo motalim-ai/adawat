@@ -37,6 +37,19 @@ public static class ProcessRunner
 
     public sealed record Result(int ExitCode, string Output, string Error);
 
+    /// <summary>Ends a cancelled tool and waits until it is gone. On Windows a killed process holds its files a moment
+    /// longer, and the half-written result can only be removed once it has let go.</summary>
+    public static void Stop(Process process)
+    {
+        try
+        {
+            process.Kill(entireProcessTree: true);
+            process.WaitForExit(5000);
+        }
+        catch (InvalidOperationException) { }
+        catch (System.ComponentModel.Win32Exception) { }
+    }
+
     /// <summary>The running operation's Cancel (see <see cref="OperationContext.Run"/>), used when a call passes no token.</summary>
     public static readonly AsyncLocal<CancellationToken> Ambient = new();
 
@@ -88,7 +101,7 @@ public static class ProcessRunner
         }
         catch (OperationCanceledException)
         {
-            try { process.Kill(entireProcessTree: true); } catch (InvalidOperationException) { }
+            Stop(process);
             throw;
         }
         process.WaitForExit();
