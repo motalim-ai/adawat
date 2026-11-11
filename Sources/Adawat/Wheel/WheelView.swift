@@ -140,7 +140,7 @@ struct PetalShape: Shape {
         let end = mid + step / 2
 
         func point(_ radius: CGFloat, _ angle: Double) -> CGPoint {
-            CGPoint(x: center.x + radius * cos(angle), y: center.y + radius * sin(angle))
+            CGPoint(x: center.x + radius * CGFloat(cos(angle)), y: center.y + radius * CGFloat(sin(angle)))
         }
         func toward(_ from: CGPoint, _ to: CGPoint, _ distance: CGFloat) -> CGPoint {
             let length = hypot(to.x - from.x, to.y - from.y)
