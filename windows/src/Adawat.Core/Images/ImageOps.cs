@@ -175,7 +175,7 @@ public static class ImageOps
                 using var graphics = XGraphics.FromPdfPage(page);
                 graphics.DrawImage(picture, 0, 0, page.Width.Point, page.Height.Point);
             }
-            document.Save(output);
+            Pdf.PdfOps.Save(document, output);
         });
         return [output];
     }

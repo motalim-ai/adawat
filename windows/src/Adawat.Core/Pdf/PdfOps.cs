@@ -23,6 +23,18 @@ public static class PdfOps
 {
     // MARK: Pages as pictures
 
+    /// <summary>
+    /// Saves a PDF. PDFsharp writes the document's dates with the system's calendar, so under a Hijri one (the default for
+    /// Saudi Arabia) the years come out wrong, and a PDF whose dates were removed cannot be saved at all.
+    /// </summary>
+    public static void Save(PdfDocument pdf, string path)
+    {
+        var culture = System.Globalization.CultureInfo.CurrentCulture;
+        System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.InvariantCulture;
+        try { pdf.Save(path); }
+        finally { System.Globalization.CultureInfo.CurrentCulture = culture; }
+    }
+
     public static int PageCount(string path)
     {
         using var stream = File.OpenRead(path);
@@ -305,7 +317,7 @@ public static class PdfOps
                 using var source = Open(files[index], PdfDocumentOpenMode.Import);
                 foreach (var page in source.Pages) { merged.AddPage(page); pages++; }
             }
-            merged.Save(output);
+            Save(merged, output);
         });
         context.Finish($"Merged {files.Count} PDFs · {pages} pages");
         return [output];
@@ -328,7 +340,7 @@ public static class PdfOps
                     context.Progress((double)index / source.PageCount);
                     using var single = new PdfDocument();
                     single.AddPage(source.Pages[index]);
-                    single.Save(Path.Combine(folder, $"Page {index + 1}.pdf"));
+                    Save(single, Path.Combine(folder, $"Page {index + 1}.pdf"));
                 }
             });
             outputs.Add(folder);
@@ -350,7 +362,7 @@ public static class PdfOps
                 pdf.Internals.Catalog.Elements.Remove("/Metadata");
                 foreach (var page in pdf.Pages) page.Elements.Remove("/Metadata");
                 pdf.Options.CompressContentStreams = true;
-                pdf.Save(output);
+                Save(pdf, output);
             });
             outputs.Add(output);
         }
@@ -382,7 +394,7 @@ public static class PdfOps
                 pdf.Options.NoCompression = false;
                 pdf.Options.FlateEncodeMode = PdfFlateEncodeMode.BestCompression;
                 pdf.Options.UseFlateDecoderForJpegImages = PdfUseFlateDecoderForJpegImages.Never;
-                pdf.Save(output);
+                Save(pdf, output);
             });
             var original = new FileInfo(file).Length;
             if (new FileInfo(output).Length >= original)
@@ -497,7 +509,7 @@ public static class PdfOps
                 graphics.TranslateTransform(-page.Width.Point / 2, -page.Height.Point / 2);
                 graphics.DrawImage(form, 0, 0, page.Width.Point, page.Height.Point);
             }
-            result.Save(output);
+            Save(result, output);
         });
         return output;
     }
