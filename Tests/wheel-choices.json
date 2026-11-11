@@ -5,45 +5,51 @@
     "added to or dropped from one of them shows up here.",
     "",
     "An entry is a choice's id, or an object when the choice is not for every platform:",
-    "  only      the platforms that have it (mac, windows, linux)",
+    "  only      the platforms that have it (mac, windows, linux, android)",
     "  not       the platforms that lack it",
     "  optional  true, or the platforms where it depends on the machine (Pages, Keynote, PowerPoint or LibreOffice",
-    "            installed; a Mac that can write AVIF), so a test accepts it present or absent",
+    "            installed; a Mac that can write AVIF; a phone that can write HEIC), so a test accepts it present or",
+    "            absent",
+    "A case can carry not as well: a phone is never handed a folder.",
     "A test makes empty files with these names in a scratch folder; a name ending in / is a folder.",
-    "Every selection gets the same Actions wheel, listed once."
+    "Every selection gets the same Actions wheel, listed once. On Android, Print is there for photos and PDFs only."
   ],
   "actions": [
     { "id": "action.airdrop", "only": ["mac"] },
     { "id": "action.share", "not": ["mac"] },
-    "action.float",
+    { "id": "action.open", "only": ["android"] },
+    { "id": "action.float", "not": ["android"] },
     "action.copy",
-    "action.move",
-    "action.paths",
-    "action.terminal"
+    { "id": "action.save", "only": ["android"] },
+    { "id": "action.move", "not": ["android"] },
+    { "id": "action.paths", "not": ["android"] },
+    { "id": "action.terminal", "not": ["android"] },
+    { "id": "action.print", "only": ["android"], "optional": true },
+    { "id": "action.details", "only": ["android"] }
   ],
   "cases": [
     {
       "name": "one photo",
       "files": ["photo.jpg"],
-      "convert": ["image.png", { "id": "image.heic", "only": ["mac"] }, "image.webp", { "id": "image.avif", "optional": ["mac"] }, "image.tiff", "image.gif", "image.bmp", "image.ico", "image.pdf"],
+      "convert": ["image.png", { "id": "image.heic", "only": ["mac", "android"], "optional": ["android"] }, "image.webp", { "id": "image.avif", "optional": ["mac"], "not": ["android"] }, "image.tiff", "image.gif", "image.bmp", "image.ico", "image.pdf"],
       "tools": ["image.compress", "image.metadata", "image.edit", "image.annotate", "image.frame", "image.crop", "image.redact", "image.rotate", "image.ocr", "image.qr"]
     },
     {
       "name": "one HEIC photo",
       "files": ["photo.heic"],
-      "convert": ["image.png", "image.jpg", "image.webp", { "id": "image.avif", "optional": ["mac"] }, "image.tiff", "image.gif", "image.bmp", "image.ico", "image.pdf"],
+      "convert": ["image.png", "image.jpg", "image.webp", { "id": "image.avif", "optional": ["mac"], "not": ["android"] }, "image.tiff", "image.gif", "image.bmp", "image.ico", "image.pdf"],
       "tools": ["image.compress", "image.metadata", "image.edit", "image.annotate", "image.frame", "image.crop", "image.redact", "image.rotate", "image.ocr", "image.qr"]
     },
     {
       "name": "two photos of the same format",
       "files": ["photo.jpg", "second.jpg"],
-      "convert": ["image.png", { "id": "image.heic", "only": ["mac"] }, "image.webp", { "id": "image.avif", "optional": ["mac"] }, "image.tiff", "image.gif", "image.bmp", "image.ico", "image.pdf"],
+      "convert": ["image.png", { "id": "image.heic", "only": ["mac", "android"], "optional": ["android"] }, "image.webp", { "id": "image.avif", "optional": ["mac"], "not": ["android"] }, "image.tiff", "image.gif", "image.bmp", "image.ico", "image.pdf"],
       "tools": ["image.compress", "image.metadata", "image.frame", "image.crop", "image.rotate", "image.ocr", "image.qr", "image.topdf", "image.collage"]
     },
     {
       "name": "two photos of different formats",
       "files": ["photo.jpg", "drawing.png"],
-      "convert": ["image.png", "image.jpg", { "id": "image.heic", "only": ["mac"] }, "image.webp", { "id": "image.avif", "optional": ["mac"] }, "image.tiff", "image.gif", "image.bmp", "image.ico", "image.pdf"],
+      "convert": ["image.png", "image.jpg", { "id": "image.heic", "only": ["mac", "android"], "optional": ["android"] }, "image.webp", { "id": "image.avif", "optional": ["mac"], "not": ["android"] }, "image.tiff", "image.gif", "image.bmp", "image.ico", "image.pdf"],
       "tools": ["image.compress", "image.metadata", "image.frame", "image.crop", "image.rotate", "image.ocr", "image.qr", "image.topdf", "image.collage"]
     },
     {
@@ -61,19 +67,19 @@
     {
       "name": "one video",
       "files": ["clip.mp4"],
-      "convert": ["media.mov", "media.mkv", "media.webm", "media.gif", "media.mp3", "media.m4a"],
+      "convert": [{ "id": "media.mov", "not": ["android"] }, { "id": "media.mkv", "not": ["android"] }, "media.webm", "media.gif", "media.mp3", "media.m4a"],
       "tools": ["video.compress", "video.metadata", "video.trim", "video.crop", "video.speed", "video.frames", "video.split", "video.redact", "video.rotate", "video.mute", "video.normalize"]
     },
     {
       "name": "one MKV video",
       "files": ["movie.mkv"],
-      "convert": ["media.mp4", "media.mov", "media.webm", "media.gif", "media.mp3", "media.m4a"],
+      "convert": ["media.mp4", { "id": "media.mov", "not": ["android"] }, "media.webm", "media.gif", "media.mp3", "media.m4a"],
       "tools": ["video.compress", "video.metadata", "video.trim", "video.crop", "video.speed", "video.frames", "video.split", "video.redact", "video.rotate", "video.mute", "video.normalize"]
     },
     {
       "name": "two videos",
       "files": ["clip.mp4", "second.mov"],
-      "convert": ["media.mp4", "media.mov", "media.mkv", "media.webm", "media.gif", "media.mp3", "media.m4a"],
+      "convert": ["media.mp4", { "id": "media.mov", "not": ["android"] }, { "id": "media.mkv", "not": ["android"] }, "media.webm", "media.gif", "media.mp3", "media.m4a"],
       "tools": ["video.compress", "video.metadata", "video.join", "video.rotate", "video.mute", "video.normalize"]
     },
     {
@@ -122,10 +128,14 @@
       "name": "a PowerPoint presentation",
       "files": ["deck.pptx"],
       "convert": [
-        { "id": "slides.pdf", "optional": true },
+        { "id": "slides.pdf", "not": ["android"], "optional": true },
         { "id": "slides.key", "only": ["mac"], "optional": true },
-        { "id": "slides.png", "optional": true },
-        { "id": "slides.jpg", "optional": true }
+        { "id": "slides.png", "not": ["android"], "optional": true },
+        { "id": "slides.jpg", "not": ["android"], "optional": true },
+        { "id": "archive.zip", "only": ["android"] },
+        { "id": "archive.tar", "only": ["android"] },
+        { "id": "archive.tgz", "only": ["android"] },
+        { "id": "archive.gz", "only": ["android"] }
       ],
       "tools": []
     },
@@ -149,6 +159,7 @@
     },
     {
       "name": "a folder",
+      "not": ["android"],
       "files": ["folder/"],
       "convert": ["archive.zip", "archive.tar", "archive.tgz"],
       "tools": []
@@ -167,6 +178,7 @@
     },
     {
       "name": "a folder and a file together",
+      "not": ["android"],
       "files": ["folder/", "data.xyz"],
       "convert": ["archive.zip", "archive.tar", "archive.tgz"],
       "tools": []

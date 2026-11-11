@@ -60,6 +60,13 @@ android {
         buildConfig = true
     }
 
+    // ./gradlew testDebugUnitTest runs app/src/test on this computer, with no phone: the wheel's choices and the
+    // conversions written in plain Kotlin. Android's own classes are empty shells there, so let them answer with
+    // nothing instead of throwing.
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
+
     // The Arabic strings are shared with the Windows and Linux apps.
     sourceSets["main"].assets.directories += "../../windows/shared"
 }
@@ -92,4 +99,7 @@ dependencies {
     implementation(libs.compose.material3)
     implementation(libs.compose.ui.tooling.preview)
     debugImplementation(libs.compose.ui.tooling)
+    testImplementation(libs.junit)
+    testImplementation(libs.json)
+    testImplementation(libs.kxml)
 }

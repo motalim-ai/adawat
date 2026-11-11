@@ -36,12 +36,15 @@ class ImageFormat private constructor(val title: String, val ext: String, val lo
             else -> all.firstOrNull { it.ext == ext }
         }
 
+        /** A phone that will not list its encoders gets a wheel without HEIC, rather than no wheel. */
         private val hevcEncoder by lazy {
-            MediaCodecList(MediaCodecList.REGULAR_CODECS).codecInfos.any { info ->
-                info.isEncoder && info.supportedTypes.any {
-                    it.equals(MediaFormat.MIMETYPE_VIDEO_HEVC, true) || it.equals(MediaFormat.MIMETYPE_IMAGE_ANDROID_HEIC, true)
+            runCatching {
+                MediaCodecList(MediaCodecList.REGULAR_CODECS).codecInfos.any { info ->
+                    info.isEncoder && info.supportedTypes.any {
+                        it.equals(MediaFormat.MIMETYPE_VIDEO_HEVC, true) || it.equals(MediaFormat.MIMETYPE_IMAGE_ANDROID_HEIC, true)
+                    }
                 }
-            }
+            }.getOrDefault(false)
         }
     }
 }

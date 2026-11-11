@@ -16,6 +16,9 @@ pdfbox = "2.0.27.0"
 media3 = "1.11.1"
 jsoup = "1.23.2"
 commonmark = "0.30.1"
+junit = "4.13.2"
+json = "20240303"
+kxml = "2.3.0"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
@@ -45,6 +48,11 @@ compose-material3 = { module = "androidx.compose.material3:material3" }
 compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
 compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
+junit = { module = "junit:junit", version.ref = "junit" }
+# The real org.json for tests on the computer, where Android's own is only an empty shell.
+json = { module = "org.json:json", version.ref = "json" }
+# The XML reader Android itself is built on, for the same reason.
+kxml = { module = "net.sf.kxml:kxml2", version.ref = "kxml" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
