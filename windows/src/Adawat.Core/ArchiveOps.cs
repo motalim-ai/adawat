@@ -135,6 +135,12 @@ public static class ArchiveOps
         }
         try
         {
+            if (TarStream(file) is { } tar)
+            {
+                using (tar) ExtractTar(tar, folder, context);
+                if (!Directory.EnumerateFileSystemEntries(folder).Any()) throw new AdawatException("The source archive is empty.");
+                return;
+            }
             using var archive = ArchiveFactory.Open(file, null);
             if (archive.IsSolid || archive.Type == ArchiveType.SevenZip || ext is "tgz")
             {
@@ -156,10 +162,52 @@ public static class ArchiveOps
             }
             if (!Directory.EnumerateFileSystemEntries(folder).Any()) throw new AdawatException("The source archive is empty.");
         }
-        catch (Exception e) when (e is CryptographicException or InvalidFormatException or SharpCompressException)
+        // SharpCompress reports a file that is no archive at all as an InvalidOperationException; the tar reader reports
+        // a damaged one as invalid data or a stream that ends early.
+        catch (Exception e) when (e is CryptographicException or InvalidFormatException or SharpCompressException or InvalidOperationException
+                                      or InvalidDataException or EndOfStreamException)
         {
             Directory.Delete(folder, true);
             throw new AdawatException("This archive is encrypted or uses a format Adawat cannot open.");
+        }
+    }
+
+    /// <summary>The tar inside <paramref name="file"/>, decompressed as it is read, or null when the file is not a tar.</summary>
+    private static Stream? TarStream(string file)
+    {
+        var name = Path.GetFileName(file).ToLowerInvariant();
+        bool Ends(params string[] endings) => endings.Any(name.EndsWith);
+        if (Ends(".tar")) return File.OpenRead(file);
+        if (Ends(".tar.gz", ".tgz")) return new GZipStream(File.OpenRead(file), CompressionMode.Decompress);
+        if (Ends(".tar.bz2", ".tbz", ".tbz2")) return new SharpCompress.Compressors.BZip2.BZip2Stream(File.OpenRead(file), SharpCompress.Compressors.CompressionMode.Decompress, false);
+        if (Ends(".tar.xz", ".txz")) return new SharpCompress.Compressors.Xz.XZStream(File.OpenRead(file));
+        return null;
+    }
+
+    /// <summary>
+    /// Unpacks a tar with .NET's own reader. SharpCompress, which opens the other formats, takes the extended headers of
+    /// a pax tar (the kind this app and bsdtar write) for files of their own, and does not look inside a compressed tar.
+    /// Files and folders only: links and devices are left out, and nothing is written outside <paramref name="folder"/>.
+    /// </summary>
+    private static void ExtractTar(Stream stream, string folder, OperationContext context)
+    {
+        using var reader = new TarReader(stream);
+        var root = Path.GetFullPath(folder).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        while (reader.GetNextEntry() is { } entry)
+        {
+            context.ThrowIfCancelled();
+            var target = Path.GetFullPath(Path.Combine(root, entry.Name.TrimStart('/', '\\')));
+            if (!target.StartsWith(root, StringComparison.Ordinal)) continue;
+            switch (entry.EntryType)
+            {
+                case TarEntryType.Directory:
+                    Directory.CreateDirectory(target);
+                    break;
+                case TarEntryType.RegularFile or TarEntryType.V7RegularFile or TarEntryType.ContiguousFile:
+                    Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                    entry.ExtractToFile(target, overwrite: true);
+                    break;
+            }
         }
     }
 
