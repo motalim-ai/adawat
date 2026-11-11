@@ -47,7 +47,7 @@ enum DemoGIF {
         func onWheel(_ index: Int, radius: CGFloat = 1.05) -> CGPoint {
             let angle = -Double.pi / 2 + Double(index) / Double(count) * 2 * Double.pi
             let r = WheelGeometry.labelRadius * radius * wheelScale
-            return CGPoint(x: center.x + r * cos(angle), y: center.y + r * sin(angle))
+            return CGPoint(x: center.x + r * CGFloat(cos(angle)), y: center.y + r * CGFloat(sin(angle)))
         }
         func hovered(at point: CGPoint) -> Int? {
             WheelGeometry.index(at: CGPoint(x: (point.x - wheelOrigin.x) / wheelScale, y: (point.y - wheelOrigin.y) / wheelScale), count: count)
@@ -84,7 +84,7 @@ enum DemoGIF {
                     let step = ease(progress(f, 64, 96)) * Double(target)
                     let angle = -Double.pi / 2 + step / Double(count) * 2 * Double.pi
                     let r = WheelGeometry.labelRadius * 1.05 * wheelScale
-                    cursor = CGPoint(x: center.x + r * cos(angle), y: center.y + r * sin(angle))
+                    cursor = CGPoint(x: center.x + r * CGFloat(cos(angle)), y: center.y + r * CGFloat(sin(angle)))
                 }
             case 112..<122:
                 cursor = onWheel(target)
@@ -119,7 +119,7 @@ enum DemoGIF {
                 if toastAlpha > 0, let toast {
                     let size = CGSize(width: CGFloat(toast.width) / 2, height: CGFloat(toast.height) / 2)
                     ctx.setAlpha(toastAlpha)
-                    drawImage(toast, in: CGRect(x: (canvas.width - size.width) / 2, y: -2 - 8 * (1 - toastAlpha),
+                    drawImage(toast, in: CGRect(x: (canvas.width - size.width) / 2, y: CGFloat(-2 - 8 * (1 - toastAlpha)),
                                                 width: size.width, height: size.height), ctx)
                     ctx.setAlpha(1)
                 }

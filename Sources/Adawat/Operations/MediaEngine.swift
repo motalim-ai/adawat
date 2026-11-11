@@ -76,7 +76,8 @@ enum MediaProbe {
         process.waitUntilExit()
 
         if let match = report.firstMatch(of: #/Duration: (\d+):(\d+):(\d+(?:\.\d+)?)/#) {
-            info.duration = (Double(match.1) ?? 0) * 3600 + (Double(match.2) ?? 0) * 60 + (Double(match.3) ?? 0)
+            let hours = Double(match.1) ?? 0, minutes = Double(match.2) ?? 0, seconds = Double(match.3) ?? 0
+            info.duration = hours * 3600 + minutes * 60 + seconds
         }
         for line in report.split(separator: "\n") where line.contains("Stream #") {
             if info.videoCodec == nil, let match = line.firstMatch(of: #/Video: (\w+)/#) {

@@ -23,7 +23,7 @@ enum WheelGeometry {
     /// Center of petal `index` of `count`, starting at the top and going clockwise.
     static func position(index: Int, count: Int) -> CGPoint {
         let angle = -Double.pi / 2 + Double(index) / Double(max(count, 1)) * 2 * Double.pi
-        return CGPoint(x: size / 2 + labelRadius * cos(angle), y: size / 2 + labelRadius * sin(angle))
+        return CGPoint(x: size / 2 + labelRadius * CGFloat(cos(angle)), y: size / 2 + labelRadius * CGFloat(sin(angle)))
     }
 
     /// The petal under `point` (top-left origin), or nil over the center label.
