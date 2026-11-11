@@ -286,13 +286,16 @@ came out: the format, the size, the pages, the text. They need `ffmpeg` on the P
 
 ```bash
 swift test                                                               # the Mac app
+(cd android && ./gradlew testDebugUnitTest)                              # the Android app, with no phone
 dotnet test --project windows/tests/Adawat.Core.Tests -f net10.0        # the shared core, on Linux or a Mac
 dotnet test --project windows/tests/Adawat.Core.Tests -f net10.0-windows10.0.22621.0   # the same, on Windows
 ```
 
-`Tests/wheel-choices.json` lists what each wheel offers for each kind of file, in petal order. The Mac app and the
-shared core keep separate catalogs, and both are tested against this one file: add a choice to one and its test fails
-until the file, and so the other apps, are brought along. GitHub Actions runs all of this on every pull request
+`Tests/wheel-choices.json` lists what each wheel offers for each kind of file, in petal order. The Mac app, the
+shared core and the Android app keep separate catalogs, and all three are tested against this one file: add a choice
+to one and its test fails until the file, and so the other apps, are brought along. The Android tests run on the
+computer and reach what is written in plain Kotlin (the wheel, documents, spreadsheets, subtitles); photos, video,
+PDF and archives need a phone and are not tested yet. GitHub Actions runs all of this on every pull request
 (`.github/workflows/ci.yml`).
 
 <details>
@@ -318,8 +321,9 @@ until the file, and so the other apps, are brought along. GitHub Actions runs al
 | `linux/packaging`, `linux/tools` | Linux: the .desktop file, package definitions, ffmpeg, model and build scripts |
 | `android/app/src/main/java/com/motalim/adawat` | Android: the wheel, the editors, and every conversion and tool |
 | `android/app/src/main/cpp`, `android/tools` | Android: the bridges to LAME and libarchive, and the script that fetches their sources |
-| `Tests` | The Mac app's tests, and `wheel-choices.json`, which the Mac, Windows and Linux tests share |
+| `Tests` | The Mac app's tests, and `wheel-choices.json`, which the tests of every app share |
 | `windows/tests/Adawat.Core.Tests` | Tests for the shared core of the Windows and Linux apps |
+| `android/app/src/test` | Android: tests that run on the computer |
 
 </details>
 

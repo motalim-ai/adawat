@@ -1,4 +1,4 @@
-# Builds the three desktop apps and runs their tests on every pull request and on main.
+# Builds the Mac, Windows, Linux and Android apps and runs their tests on every pull request and on main.
 # The tests run wheel choices on sample files they make themselves; Tests/wheel-choices.json is shared by all of them.
 name: CI
 
@@ -55,6 +55,26 @@ jobs:
         env:
           LANG: ar_SA.UTF-8
           LC_ALL: ar_SA.UTF-8
+
+  android:
+    name: Android app
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+      - name: The C libraries the app builds with the NDK
+        run: android/tools/fetch-native.sh
+      # On the computer, with no phone: the wheel's choices and the conversions written in plain Kotlin.
+      - name: Test
+        working-directory: android
+        run: ./gradlew testDebugUnitTest --console=plain
+      - name: Build the app
+        working-directory: android
+        run: ./gradlew assembleDebug --console=plain
 
   windows:
     name: Windows app and the shared core

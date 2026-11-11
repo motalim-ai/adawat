@@ -335,6 +335,7 @@ cd android && ./gradlew assembleDebug                          # app/build/outpu
 
 ```bash
 swift test                                                               # تطبيق الماك
+(cd android && ./gradlew testDebugUnitTest)                              # تطبيق الأندرويد، من غير موبايل
 dotnet test --project windows/tests/Adawat.Core.Tests -f net10.0        # الكود المشترك، على اللينكس أو الماك
 dotnet test --project windows/tests/Adawat.Core.Tests -f net10.0-windows10.0.22621.0   # نفسه، على الويندوز
 ```
@@ -342,9 +343,10 @@ dotnet test --project windows/tests/Adawat.Core.Tests -f net10.0-windows10.0.226
 <div dir="rtl">
 
 الملف `Tests/wheel-choices.json` فيه اللي كل عجلة بتعرضه لكل نوع ملف، بترتيب البتلات. تطبيق الماك والكود
-المشترك كل واحد ليه قايمته، والاتنين بيتراجعوا على الملف ده: لو ضفت اختيار في واحد منهم اختباره بيفشل
-لحد ما الملف، ومعاه باقي التطبيقات، يتحدّثوا. و GitHub Actions بيشغّل كل ده مع كل pull request
-(`.github/workflows/ci.yml`).
+المشترك وتطبيق الأندرويد كل واحد ليه قايمته، والتلاتة بيتراجعوا على الملف ده: لو ضفت اختيار في واحد منهم
+اختباره بيفشل لحد ما الملف، ومعاه باقي التطبيقات، يتحدّثوا. اختبارات الأندرويد بتشتغل على الكمبيوتر وبتوصل
+للي مكتوب بـ Kotlin بس (العجلة والمستندات والجداول والترجمات)، أما الصور والفيديو و PDF والأرشيف فمحتاجين
+موبايل ولسه ما بيتختبروش. و GitHub Actions بيشغّل كل ده مع كل pull request (`.github/workflows/ci.yml`).
 
 ## الخصوصية
 
