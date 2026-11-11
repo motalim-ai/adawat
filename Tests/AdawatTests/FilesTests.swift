@@ -9,6 +9,8 @@ final class FilesTests: AdawatTestCase {
             ("photo.JPG", .image), ("photo.heic", .image), ("report.pdf", .pdf), ("clip.mkv", .video), ("voice.opus", .audio),
             ("letter.docx", .document), ("table.csv", .spreadsheet), ("deck.pptx", .presentation), ("film.vtt", .subtitle),
             ("box.tar.gz", .archive), ("data.xyz", .other), ("no extension", .other),
+            // Known to a Mac only once a player for them is installed; Adawat knows them by itself.
+            ("movie.webm", .video), ("old.avi", .video), ("old.wmv", .video), ("song.ogg", .audio), ("song.flac", .audio), ("note.amr", .audio),
         ]
         for (name, kind) in kinds {
             XCTAssertEqual(FileKind(url: file(name)), kind, name)
