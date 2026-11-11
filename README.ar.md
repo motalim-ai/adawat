@@ -325,6 +325,27 @@ cd android && ./gradlew assembleDebug                          # app/build/outpu
 والأمر `./gradlew assembleRelease` بيوقّع نسخة الإصدار لو خصائص Gradle دي موجودة: `adawat.storeFile`
 و `adawat.storePassword` و `adawat.keyAlias` و `adawat.keyPassword`، مثلًا في `~/.gradle/gradle.properties`.
 
+### الاختبارات
+
+الاختبارات بتشغّل اختيارات العجلة على ملفات عيّنة بتعملها هي (صور و PDF وفيديوهات قصيرة)، وبعدين بتراجع
+اللي طلع: الصيغة والمقاس وعدد الصفحات والنص. محتاجة `ffmpeg` في الـ PATH، و `cwebp` على الماك
+(`brew install ffmpeg webp`)، ومن غير ffmpeg اختبارات الفيديو والصوت بتتخطّى نفسها.
+
+</div>
+
+```bash
+swift test                                                               # تطبيق الماك
+dotnet test --project windows/tests/Adawat.Core.Tests -f net10.0        # الكود المشترك، على اللينكس أو الماك
+dotnet test --project windows/tests/Adawat.Core.Tests -f net10.0-windows10.0.22621.0   # نفسه، على الويندوز
+```
+
+<div dir="rtl">
+
+الملف `Tests/wheel-choices.json` فيه اللي كل عجلة بتعرضه لكل نوع ملف، بترتيب البتلات. تطبيق الماك والكود
+المشترك كل واحد ليه قايمته، والاتنين بيتراجعوا على الملف ده: لو ضفت اختيار في واحد منهم اختباره بيفشل
+لحد ما الملف، ومعاه باقي التطبيقات، يتحدّثوا. و GitHub Actions بيشغّل كل ده مع كل pull request
+(`.github/workflows/ci.yml`).
+
 ## الخصوصية
 
 أدوات عمره ما بيبعت ملفاتك لأي مكان، لا على الماك ولا على الويندوز ولا على اللينكس ولا على الأندرويد. مافيهوش تتبّع ولا حساب ولا أي خاصية

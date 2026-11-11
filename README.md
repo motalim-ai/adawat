@@ -278,6 +278,23 @@ cd android && ./gradlew assembleDebug                          # app/build/outpu
 `./gradlew assembleRelease` signs the release APK when the Gradle properties `adawat.storeFile`,
 `adawat.storePassword`, `adawat.keyAlias` and `adawat.keyPassword` are set, for example in `~/.gradle/gradle.properties`.
 
+### Tests
+
+The tests run wheel choices on sample files they make themselves (photos, PDFs, short videos), then check what
+came out: the format, the size, the pages, the text. They need `ffmpeg` on the PATH, and `cwebp` on a Mac
+(`brew install ffmpeg webp`); without ffmpeg the video and audio tests skip themselves.
+
+```bash
+swift test                                                               # the Mac app
+dotnet test --project windows/tests/Adawat.Core.Tests -f net10.0        # the shared core, on Linux or a Mac
+dotnet test --project windows/tests/Adawat.Core.Tests -f net10.0-windows10.0.22621.0   # the same, on Windows
+```
+
+`Tests/wheel-choices.json` lists what each wheel offers for each kind of file, in petal order. The Mac app and the
+shared core keep separate catalogs, and both are tested against this one file: add a choice to one and its test fails
+until the file, and so the other apps, are brought along. GitHub Actions runs all of this on every pull request
+(`.github/workflows/ci.yml`).
+
 <details>
 <summary>Project layout</summary>
 
@@ -301,6 +318,8 @@ cd android && ./gradlew assembleDebug                          # app/build/outpu
 | `linux/packaging`, `linux/tools` | Linux: the .desktop file, package definitions, ffmpeg, model and build scripts |
 | `android/app/src/main/java/com/motalim/adawat` | Android: the wheel, the editors, and every conversion and tool |
 | `android/app/src/main/cpp`, `android/tools` | Android: the bridges to LAME and libarchive, and the script that fetches their sources |
+| `Tests` | The Mac app's tests, and `wheel-choices.json`, which the Mac, Windows and Linux tests share |
+| `windows/tests/Adawat.Core.Tests` | Tests for the shared core of the Windows and Linux apps |
 
 </details>
 

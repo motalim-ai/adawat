@@ -1,0 +1,175 @@
+{
+  "about": [
+    "What each wheel offers for a selection of files, in petal order. The Mac app, the shared core of the Windows and",
+    "Linux apps, and the Android app each keep their own catalog; their tests all read this one file, so a choice",
+    "added to or dropped from one of them shows up here.",
+    "",
+    "An entry is a choice's id, or an object when the choice is not for every platform:",
+    "  only      the platforms that have it (mac, windows, linux)",
+    "  not       the platforms that lack it",
+    "  optional  true when it depends on what is installed (Pages, Keynote, PowerPoint, LibreOffice), so a test",
+    "            accepts it present or absent",
+    "A test makes empty files with these names in a scratch folder; a name ending in / is a folder.",
+    "Every selection gets the same Actions wheel, listed once."
+  ],
+  "actions": [
+    { "id": "action.airdrop", "only": ["mac"] },
+    { "id": "action.share", "not": ["mac"] },
+    "action.float",
+    "action.copy",
+    "action.move",
+    "action.paths",
+    "action.terminal"
+  ],
+  "cases": [
+    {
+      "name": "one photo",
+      "files": ["photo.jpg"],
+      "convert": ["image.png", { "id": "image.heic", "only": ["mac"] }, "image.webp", "image.avif", "image.tiff", "image.gif", "image.bmp", "image.ico", "image.pdf"],
+      "tools": ["image.compress", "image.metadata", "image.edit", "image.annotate", "image.frame", "image.crop", "image.redact", "image.rotate", "image.ocr", "image.qr"]
+    },
+    {
+      "name": "one HEIC photo",
+      "files": ["photo.heic"],
+      "convert": ["image.png", "image.jpg", "image.webp", "image.avif", "image.tiff", "image.gif", "image.bmp", "image.ico", "image.pdf"],
+      "tools": ["image.compress", "image.metadata", "image.edit", "image.annotate", "image.frame", "image.crop", "image.redact", "image.rotate", "image.ocr", "image.qr"]
+    },
+    {
+      "name": "two photos of the same format",
+      "files": ["photo.jpg", "second.jpg"],
+      "convert": ["image.png", { "id": "image.heic", "only": ["mac"] }, "image.webp", "image.avif", "image.tiff", "image.gif", "image.bmp", "image.ico", "image.pdf"],
+      "tools": ["image.compress", "image.metadata", "image.frame", "image.crop", "image.rotate", "image.ocr", "image.qr", "image.topdf", "image.collage"]
+    },
+    {
+      "name": "two photos of different formats",
+      "files": ["photo.jpg", "drawing.png"],
+      "convert": ["image.png", "image.jpg", { "id": "image.heic", "only": ["mac"] }, "image.webp", "image.avif", "image.tiff", "image.gif", "image.bmp", "image.ico", "image.pdf"],
+      "tools": ["image.compress", "image.metadata", "image.frame", "image.crop", "image.rotate", "image.ocr", "image.qr", "image.topdf", "image.collage"]
+    },
+    {
+      "name": "one PDF",
+      "files": ["report.pdf"],
+      "convert": ["pdf.docx", "pdf.pptx", "pdf.epub", "pdf.md", "pdf.png", "pdf.jpg", "pdf.txt", { "id": "pdf.xlsx", "not": ["mac"] }, { "id": "pdf.pages", "only": ["mac"], "optional": true }],
+      "tools": ["pdf.compress", "pdf.metadata", "pdf.organize", "pdf.split", "pdf.ocr"]
+    },
+    {
+      "name": "two PDFs",
+      "files": ["report.pdf", "second.pdf"],
+      "convert": ["pdf.docx", "pdf.pptx", "pdf.epub", "pdf.md", "pdf.png", "pdf.jpg", "pdf.txt", { "id": "pdf.xlsx", "not": ["mac"] }, { "id": "pdf.pages", "only": ["mac"], "optional": true }],
+      "tools": ["pdf.compress", "pdf.metadata", "pdf.merge", "pdf.split", "pdf.ocr"]
+    },
+    {
+      "name": "one video",
+      "files": ["clip.mp4"],
+      "convert": ["media.mov", "media.mkv", "media.webm", "media.gif", "media.mp3", "media.m4a"],
+      "tools": ["video.compress", "video.metadata", "video.trim", "video.crop", "video.speed", "video.frames", "video.split", "video.redact", "video.rotate", "video.mute", "video.normalize"]
+    },
+    {
+      "name": "one MKV video",
+      "files": ["movie.mkv"],
+      "convert": ["media.mp4", "media.mov", "media.webm", "media.gif", "media.mp3", "media.m4a"],
+      "tools": ["video.compress", "video.metadata", "video.trim", "video.crop", "video.speed", "video.frames", "video.split", "video.redact", "video.rotate", "video.mute", "video.normalize"]
+    },
+    {
+      "name": "two videos",
+      "files": ["clip.mp4", "second.mov"],
+      "convert": ["media.mp4", "media.mov", "media.mkv", "media.webm", "media.gif", "media.mp3", "media.m4a"],
+      "tools": ["video.compress", "video.metadata", "video.join", "video.rotate", "video.mute", "video.normalize"]
+    },
+    {
+      "name": "one audio file",
+      "files": ["voice.mp3"],
+      "convert": ["media.m4a", "media.wav", "media.flac", "media.aiff", "media.ogg", "media.opus"],
+      "tools": ["audio.compress", "audio.metadata", "audio.normalize", "audio.visualizer", "audio.trim", "audio.channels", "audio.bleep"]
+    },
+    {
+      "name": "two audio files",
+      "files": ["voice.mp3", "second.wav"],
+      "convert": ["media.mp3", "media.m4a", "media.wav", "media.flac", "media.aiff", "media.ogg", "media.opus"],
+      "tools": ["audio.compress", "audio.metadata", "audio.normalize", "audio.silence", "audio.mono"]
+    },
+    {
+      "name": "a Markdown note",
+      "files": ["note.md"],
+      "convert": ["doc.pdf", "doc.docx", { "id": "doc.pages", "only": ["mac"], "optional": true }, "doc.epub", "doc.txt", "doc.rtf", "doc.html", "doc.odt"],
+      "tools": ["text.qr"]
+    },
+    {
+      "name": "a text file",
+      "files": ["link.txt"],
+      "convert": ["doc.pdf", "doc.docx", { "id": "doc.pages", "only": ["mac"], "optional": true }, "doc.epub", "doc.md", "doc.rtf", "doc.html", "doc.odt"],
+      "tools": ["text.qr"]
+    },
+    {
+      "name": "a Word document",
+      "files": ["letter.docx"],
+      "convert": ["doc.pdf", { "id": "doc.pages", "only": ["mac"], "optional": true }, "doc.epub", "doc.md", "doc.txt", "doc.rtf", "doc.html", "doc.odt"],
+      "tools": []
+    },
+    {
+      "name": "a CSV table",
+      "files": ["table.csv"],
+      "convert": ["sheet.xlsx", "sheet.ods", "sheet.tsv", "sheet.pdf", "sheet.html"],
+      "tools": []
+    },
+    {
+      "name": "an Excel workbook",
+      "files": ["table.xlsx"],
+      "convert": ["sheet.ods", "sheet.csv", "sheet.tsv", "sheet.pdf", "sheet.html"],
+      "tools": []
+    },
+    {
+      "name": "a PowerPoint presentation",
+      "files": ["deck.pptx"],
+      "convert": [
+        { "id": "slides.pdf", "optional": true },
+        { "id": "slides.key", "only": ["mac"], "optional": true },
+        { "id": "slides.png", "optional": true },
+        { "id": "slides.jpg", "optional": true }
+      ],
+      "tools": []
+    },
+    {
+      "name": "subtitles",
+      "files": ["film.srt"],
+      "convert": ["subtitle.vtt", "subtitle.txt"],
+      "tools": []
+    },
+    {
+      "name": "a ZIP archive",
+      "files": ["box.zip"],
+      "convert": ["archive.to-tar", "archive.to-tgz"],
+      "tools": ["archive.extract"]
+    },
+    {
+      "name": "a .tar.gz archive",
+      "files": ["box.tar.gz"],
+      "convert": ["archive.to-zip", "archive.to-tar"],
+      "tools": ["archive.extract"]
+    },
+    {
+      "name": "a folder",
+      "files": ["folder/"],
+      "convert": ["archive.zip", "archive.tar", "archive.tgz"],
+      "tools": []
+    },
+    {
+      "name": "a file of no known kind",
+      "files": ["data.xyz"],
+      "convert": ["archive.zip", "archive.tar", "archive.tgz", "archive.gz"],
+      "tools": []
+    },
+    {
+      "name": "a photo and a video together",
+      "files": ["photo.jpg", "clip.mp4"],
+      "convert": ["archive.zip", "archive.tar", "archive.tgz"],
+      "tools": []
+    },
+    {
+      "name": "a folder and a file together",
+      "files": ["folder/", "data.xyz"],
+      "convert": ["archive.zip", "archive.tar", "archive.tgz"],
+      "tools": []
+    }
+  ]
+}
