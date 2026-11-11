@@ -64,8 +64,13 @@ jobs:
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.x
+      # Chocolatey puts a small launcher on the PATH that starts the real ffmpeg; the app ships the real one, so the
+      # tests run that too.
       - name: ffmpeg
-        run: choco install ffmpeg --no-progress -y
+        run: |
+          choco install ffmpeg --no-progress -y
+          $real = Get-ChildItem "$env:ChocolateyInstall\lib\ffmpeg\tools" -Recurse -Filter ffmpeg.exe | Select-Object -First 1
+          Add-Content $env:GITHUB_PATH $real.DirectoryName
       - name: Build the Windows app
         run: dotnet build windows/src/Adawat.App/Adawat.App.csproj -c Release
       - name: Test the core

@@ -124,9 +124,19 @@ public static class MediaOps
         }
     }
 
+    /// <summary>Removes a half-written result. Right after its tool was stopped the file can still be held for a moment
+    /// (by a child of the tool, or by a virus scanner on Windows), so this keeps trying for two seconds.</summary>
     public static void TryDelete(string path)
     {
-        try { if (File.Exists(path)) File.Delete(path); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+        for (var attempt = 0; attempt < 20; attempt++)
+        {
+            try
+            {
+                if (File.Exists(path)) File.Delete(path);
+                return;
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException) { Thread.Sleep(100); }
+        }
     }
 
     // MARK: Lossless edits
