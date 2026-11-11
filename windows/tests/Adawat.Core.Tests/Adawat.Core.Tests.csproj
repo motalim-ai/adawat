@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Tests for the shared core, run the way the wheel runs it: a choice's id, some files, and what comes out.
+       Built twice like the core: the Windows build runs on Windows, the plain net10.0 build on Linux (and on a Mac).
+       Run them with "dotnet test" and its project and framework options, as the README shows; the global.json at
+       the top of the repository picks the test runner that xUnit 3 uses on .NET 10.
+       Media tests need ffmpeg (in tools/ next to the tests, or on the PATH); without it they are skipped, unless
+       ADAWAT_TESTS_NEED_TOOLS=1 makes that a failure, as the CI does. -->
+  <PropertyGroup>
+    <TargetFramework></TargetFramework>
+    <TargetFrameworks>net10.0-windows10.0.22621.0;net10.0</TargetFrameworks>
+    <RuntimeIdentifiers></RuntimeIdentifiers>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Adawat.Core.Tests</RootNamespace>
+    <UseWPF Condition="$(TargetFramework.Contains('-windows'))">true</UseWPF>
+    <IsPackable>false</IsPackable>
+    <!-- xUnit1051 asks every async call to take the test's cancellation token; the operations take a context instead. -->
+    <NoWarn>$(NoWarn);xUnit1051</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" Version="4.0.3" />
+    <Using Include="Xunit" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Adawat.Core\Adawat.Core.csproj" />
+    <!-- The wheel's choices for each kind of file, shared with the Mac app's tests. -->
+    <Content Include="..\..\..\Tests\wheel-choices.json" Link="wheel-choices.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

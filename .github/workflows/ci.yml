@@ -1,0 +1,72 @@
+# Builds the three desktop apps and runs their tests on every pull request and on main.
+# The tests run wheel choices on sample files they make themselves; Tests/wheel-choices.json is shared by all of them.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: 1
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+  # Without ffmpeg the media tests skip themselves; here that is a failure.
+  ADAWAT_TESTS_NEED_TOOLS: 1
+
+jobs:
+  mac:
+    name: Mac app
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v5
+      - name: ffmpeg and cwebp
+        run: brew install ffmpeg webp
+      - name: Build
+        run: swift build
+      - name: Test
+        run: swift test
+
+  linux:
+    name: Linux app and the shared core
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+      - name: ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+      - name: The translation files match scripts/arabic.py
+        run: python3 scripts/arabic.py && git diff --exit-code -- Resources windows/shared
+      - name: Build the Linux app
+        run: dotnet build linux/src/Adawat.Linux/Adawat.Linux.csproj -c Release
+      - name: Test the core
+        run: dotnet test --project windows/tests/Adawat.Core.Tests -f net10.0
+      # Saudi Arabia's region brings a Hijri calendar, which has broken saving PDFs before.
+      - name: Test the core as on a system set to Arabic (Saudi Arabia)
+        run: dotnet test --project windows/tests/Adawat.Core.Tests -f net10.0 --no-build
+        env:
+          LANG: ar_SA.UTF-8
+          LC_ALL: ar_SA.UTF-8
+
+  windows:
+    name: Windows app and the shared core
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+      - name: ffmpeg
+        run: choco install ffmpeg --no-progress -y
+      - name: Build the Windows app
+        run: dotnet build windows/src/Adawat.App/Adawat.App.csproj -c Release
+      - name: Test the core
+        run: dotnet test --project windows/tests/Adawat.Core.Tests -f net10.0-windows10.0.22621.0
