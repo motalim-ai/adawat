@@ -6,7 +6,7 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
-VERSION="1.1.0"
+VERSION="1.2.0"
 INSTALL=false
 DMG=false
 for arg in "$@"; do
