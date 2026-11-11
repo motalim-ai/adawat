@@ -21,7 +21,8 @@ final class WheelChoicesTests: AdawatTestCase {
         let id: String
         var only: [String]?
         var not: [String]?
-        var optional: Bool?
+        /// Whether the choice may be missing on a Mac: `true` in the file, or a list of platforms that names it.
+        var optional = false
 
         init(from decoder: Decoder) throws {
             if let id = try? decoder.singleValueContainer().decode(String.self) {
@@ -32,7 +33,11 @@ final class WheelChoicesTests: AdawatTestCase {
             id = try values.decode(String.self, forKey: .id)
             only = try values.decodeIfPresent([String].self, forKey: .only)
             not = try values.decodeIfPresent([String].self, forKey: .not)
-            optional = try values.decodeIfPresent(Bool.self, forKey: .optional)
+            if let everywhere = try? values.decodeIfPresent(Bool.self, forKey: .optional) {
+                optional = everywhere
+            } else {
+                optional = try values.decodeIfPresent([String].self, forKey: .optional)?.contains("mac") ?? false
+            }
         }
 
         private enum Keys: String, CodingKey { case id, only, not, optional }
@@ -63,8 +68,8 @@ final class WheelChoicesTests: AdawatTestCase {
 
     private func check(_ name: String, _ wheel: String, _ expected: [Entry], _ offered: [AdawatOperation]) {
         let mine = expected.filter { ($0.only?.contains("mac") ?? true) && !($0.not?.contains("mac") ?? false) }
-        let optional = Set(mine.filter { $0.optional == true }.map(\.id))
-        let required = mine.filter { $0.optional != true }.map(\.id)
+        let optional = Set(mine.filter(\.optional).map(\.id))
+        let required = mine.filter { !$0.optional }.map(\.id)
         // Choices that depend on what is installed may be there or not; everything else has to match, in petal order.
         let actual = offered.map(\.id).filter { !optional.contains($0) }
         XCTAssertEqual(actual, required, "\(name): the \(wheel) wheel")

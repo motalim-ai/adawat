@@ -45,7 +45,10 @@ public class WheelChoicesTests
             if (entry.TryGetProperty("only", out var only) && !only.EnumerateArray().Any(p => p.GetString() == Platform)) continue;
             if (entry.TryGetProperty("not", out var not) && not.EnumerateArray().Any(p => p.GetString() == Platform)) continue;
             var id = entry.GetProperty("id").GetString()!;
-            if (entry.TryGetProperty("optional", out var flag) && flag.GetBoolean()) optional.Add(id); else required.Add(id);
+            // optional is true, or the platforms where the choice depends on the machine.
+            var mayBeMissing = entry.TryGetProperty("optional", out var flag)
+                               && (flag.ValueKind == JsonValueKind.True || flag.ValueKind == JsonValueKind.Array && flag.EnumerateArray().Any(p => p.GetString() == Platform));
+            if (mayBeMissing) optional.Add(id); else required.Add(id);
         }
         // Choices that depend on what is installed may be there or not; everything else has to match, in petal order.
         var actual = offered.Select(operation => operation.Id).Where(id => !optional.Contains(id)).ToList();
