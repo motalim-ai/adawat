@@ -27,6 +27,10 @@ enum FileKind: Hashable {
             self = .video
         } else if type.conforms(to: .audio) {
             self = .audio
+        } else if Self.videoExtensions.contains(ext) {
+            self = .video
+        } else if Self.audioExtensions.contains(ext) {
+            self = .audio
         } else if Self.documentExtensions.contains(url.pathExtension.lowercased()) {
             self = .document
         } else if type.conforms(to: .archive) || Self.archiveExtensions.contains(url.pathExtension.lowercased()) {
@@ -35,6 +39,15 @@ enum FileKind: Hashable {
             self = .other
         }
     }
+
+    /// macOS knows MKV, Opus and a few others only once an app that plays them is installed, so a Mac without one took
+    /// them for files of no kind. ffmpeg reads them all; these are the lists the Windows and Linux apps go by.
+    static let videoExtensions: Set<String> = [
+        "mp4", "m4v", "mov", "mkv", "webm", "avi", "wmv", "flv", "mpg", "mpeg", "ts", "mts", "m2ts", "3gp", "ogv",
+    ]
+    static let audioExtensions: Set<String> = [
+        "mp3", "m4a", "aac", "wav", "flac", "aif", "aiff", "ogg", "oga", "opus", "wma", "alac", "caf", "amr",
+    ]
 
     static let documentExtensions: Set<String> = [
         "txt", "rtf", "rtfd", "doc", "docx", "odt", "html", "htm", "md", "markdown", "webarchive", "epub", "pages", "textclipping",
