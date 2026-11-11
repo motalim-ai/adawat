@@ -5,7 +5,9 @@ import XCTest
 final class ImageTests: AdawatTestCase {
     func testConvertsAPhotoAndKeepsItsSize() async throws {
         let photo = try Samples.photo(file("photo.jpg"), width: 640, height: 400)
-        for ext in ["png", "heic", "webp", "avif", "tiff", "gif", "bmp"] {
+        // AVIF is written only by Macs that can; the wheel offers it only there.
+        let formats = ["png", "heic", "webp", "tiff", "gif", "bmp"] + (ImageEngine.canWrite(.avif) ? ["avif"] : [])
+        for ext in formats {
             let output = try await runOne("image.\(ext)", photo)
             XCTAssertEqual(output.lastPathComponent, "photo.\(ext)")
             XCTAssertEqual(try Samples.size(of: output), [640, 400], ext)

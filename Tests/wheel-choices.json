@@ -7,8 +7,8 @@
     "An entry is a choice's id, or an object when the choice is not for every platform:",
     "  only      the platforms that have it (mac, windows, linux)",
     "  not       the platforms that lack it",
-    "  optional  true when it depends on what is installed (Pages, Keynote, PowerPoint, LibreOffice), so a test",
-    "            accepts it present or absent",
+    "  optional  true, or the platforms where it depends on the machine (Pages, Keynote, PowerPoint or LibreOffice",
+    "            installed; a Mac that can write AVIF), so a test accepts it present or absent",
     "A test makes empty files with these names in a scratch folder; a name ending in / is a folder.",
     "Every selection gets the same Actions wheel, listed once."
   ],
@@ -25,25 +25,25 @@
     {
       "name": "one photo",
       "files": ["photo.jpg"],
-      "convert": ["image.png", { "id": "image.heic", "only": ["mac"] }, "image.webp", "image.avif", "image.tiff", "image.gif", "image.bmp", "image.ico", "image.pdf"],
+      "convert": ["image.png", { "id": "image.heic", "only": ["mac"] }, "image.webp", { "id": "image.avif", "optional": ["mac"] }, "image.tiff", "image.gif", "image.bmp", "image.ico", "image.pdf"],
       "tools": ["image.compress", "image.metadata", "image.edit", "image.annotate", "image.frame", "image.crop", "image.redact", "image.rotate", "image.ocr", "image.qr"]
     },
     {
       "name": "one HEIC photo",
       "files": ["photo.heic"],
-      "convert": ["image.png", "image.jpg", "image.webp", "image.avif", "image.tiff", "image.gif", "image.bmp", "image.ico", "image.pdf"],
+      "convert": ["image.png", "image.jpg", "image.webp", { "id": "image.avif", "optional": ["mac"] }, "image.tiff", "image.gif", "image.bmp", "image.ico", "image.pdf"],
       "tools": ["image.compress", "image.metadata", "image.edit", "image.annotate", "image.frame", "image.crop", "image.redact", "image.rotate", "image.ocr", "image.qr"]
     },
     {
       "name": "two photos of the same format",
       "files": ["photo.jpg", "second.jpg"],
-      "convert": ["image.png", { "id": "image.heic", "only": ["mac"] }, "image.webp", "image.avif", "image.tiff", "image.gif", "image.bmp", "image.ico", "image.pdf"],
+      "convert": ["image.png", { "id": "image.heic", "only": ["mac"] }, "image.webp", { "id": "image.avif", "optional": ["mac"] }, "image.tiff", "image.gif", "image.bmp", "image.ico", "image.pdf"],
       "tools": ["image.compress", "image.metadata", "image.frame", "image.crop", "image.rotate", "image.ocr", "image.qr", "image.topdf", "image.collage"]
     },
     {
       "name": "two photos of different formats",
       "files": ["photo.jpg", "drawing.png"],
-      "convert": ["image.png", "image.jpg", { "id": "image.heic", "only": ["mac"] }, "image.webp", "image.avif", "image.tiff", "image.gif", "image.bmp", "image.ico", "image.pdf"],
+      "convert": ["image.png", "image.jpg", { "id": "image.heic", "only": ["mac"] }, "image.webp", { "id": "image.avif", "optional": ["mac"] }, "image.tiff", "image.gif", "image.bmp", "image.ico", "image.pdf"],
       "tools": ["image.compress", "image.metadata", "image.frame", "image.crop", "image.rotate", "image.ocr", "image.qr", "image.topdf", "image.collage"]
     },
     {
